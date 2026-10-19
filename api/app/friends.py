@@ -1,6 +1,7 @@
 import uuid
 
 from sqlalchemy import and_, delete, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import Clock
@@ -24,7 +25,13 @@ async def send_request(session: AsyncSession, clock: Clock, me: uuid.UUID, handl
     f = await session.scalar(select(Friendship).where(_pair(me, other.id)))
     if f is None:
         f = Friendship(requester_id=me, addressee_id=other.id, status="pending")
-        session.add(f)
+        try:
+            async with session.begin_nested():  # savepoint: a lost race must not poison the outer transaction
+                session.add(f)
+                await session.flush()
+        except IntegrityError as e:  # concurrent request for the same pair hit the unique index
+            raise Conflict("Request already exists") from e
+        return f
     elif f.status == "pending" and f.addressee_id == me:
         f.status, f.accepted_at = "accepted", clock.now()
     else:

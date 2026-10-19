@@ -1,5 +1,7 @@
 import uuid
 
+import pytest
+
 from sqlalchemy import select
 
 from app import friends
@@ -109,3 +111,33 @@ async def test_remove_friend(client, session):
     _, r = await gql(client, REMOVE, {"u": bid}, a)
     assert r["data"]["removeFriend"] is True
     assert await session.scalar(select(Friendship)) is None
+
+
+async def test_concurrent_send_race_is_conflict(client, session, monkeypatch):
+    a, aid, b, bid = await two(client)
+    await gql(client, SEND, {"h": "josh"}, b)  # reverse row exists, but the pre-check will miss it
+    real, calls = session.scalar, []
+
+    async def blind(stmt, *args, **kw):
+        calls.append(1)
+        return None if len(calls) == 2 else await real(stmt, *args, **kw)
+
+    monkeypatch.setattr(session, "scalar", blind)
+    _, r = await gql(client, SEND, {"h": "maria"}, a)
+    assert code(r) == "CONFLICT"
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize(
+    "query,vars",
+    [
+        (SEND, {"h": "maria"}),
+        (RESPOND, {"i": "00000000-0000-0000-0000-000000000000", "a": True}),
+        (REMOVE, {"u": "00000000-0000-0000-0000-000000000000"}),
+        (FRIENDS, None),
+        (PENDING, None),
+    ],
+)
+async def test_requires_login(client, query, vars):
+    _, r = await gql(client, query, vars)
+    assert code(r) == "UNAUTHENTICATED"
