@@ -1,0 +1,8 @@
+{
+	"name": "Friendly Wager",
+	"short_name": "Wager",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#fafafa",
+	"theme_color": "#1a5fd0"
+}
