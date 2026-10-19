@@ -14,6 +14,7 @@ from app.db import get_session
 from app.main import create_app
 
 TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
+TEST_SECRET = "test-secret-0123456789-0123456789-abcdef"
 TABLES = "users, friendships, games, picks, league_state"
 
 
@@ -47,7 +48,7 @@ async def session(migrated):
 async def client(session):
     settings = Settings(
         database_url=TEST_DATABASE_URL,
-        session_secret="test-secret",
+        session_secret=TEST_SECRET,
         invite_code="test-invite",
         sync_secret="test-sync",
         cookie_secure=False,

@@ -6,7 +6,7 @@ import strawberry
 from fastapi import Depends, Request, Response
 from graphql import GraphQLError
 from sqlalchemy.ext.asyncio import AsyncSession
-from strawberry.extensions import SchemaExtension
+from strawberry.extensions import MaskErrors, SchemaExtension
 from strawberry.fastapi import BaseContext, GraphQLRouter
 from strawberry.types import Info
 
@@ -126,5 +126,14 @@ class Mutation:
         return True
 
 
-schema = strawberry.Schema(query=Query, mutation=Mutation, extensions=[DomainErrors])
+def _mask_unexpected(error: GraphQLError) -> bool:
+    # DomainErrors carry extensions.code; GraphQL syntax/validation errors have no original_error
+    return error.original_error is not None and "code" not in (error.extensions or {})
+
+
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+    extensions=[DomainErrors, lambda: MaskErrors(should_mask_error=_mask_unexpected, error_message="Internal error")],
+)
 graphql_router = GraphQLRouter(schema, context_getter=get_context)

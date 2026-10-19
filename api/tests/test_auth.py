@@ -1,3 +1,11 @@
+import time
+import uuid
+
+import jwt
+from sqlalchemy.exc import OperationalError
+
+from conftest import TEST_SECRET
+
 SIGN_UP = """mutation($e:String!,$p:String!,$h:String!,$i:String!){
   signUp(email:$e,password:$p,handle:$h,inviteCode:$i){token user{id handle}}}"""
 LOG_IN = "mutation($e:String!,$p:String!){logIn(email:$e,password:$p){token user{handle}}}"
@@ -73,3 +81,40 @@ async def test_log_out_clears_cookie(client):
     assert "fw_session=" in r.headers["set-cookie"] and "Max-Age=0" in r.headers["set-cookie"]
     _, me = await gql(client, ME)
     assert me["data"]["me"] is None
+
+
+# --- token security: every bad token means "not logged in" ---
+
+def _bad_tokens(uid):
+    claims = {"sub": str(uid), "exp": int(time.time()) + 3600}
+    good = jwt.encode(claims, TEST_SECRET, algorithm="HS256")
+    return {
+        "expired": jwt.encode({**claims, "exp": int(time.time()) - 10}, TEST_SECRET, algorithm="HS256"),
+        "wrong_secret": jwt.encode(claims, "x" * 40, algorithm="HS256"),
+        "tampered": good[:-3] + ("AAA" if not good.endswith("AAA") else "BBB"),
+        "alg_none": jwt.encode(claims, None, algorithm="none"),
+        "garbage": "not-a-jwt",
+    }
+
+
+async def test_bad_tokens_are_unauthenticated(client):
+    _, body = await gql(client, SIGN_UP, su())
+    uid = jwt.decode(body["data"]["signUp"]["token"], TEST_SECRET, algorithms=["HS256"])["sub"]
+    client.cookies.clear()
+    for name, tok in _bad_tokens(uuid.UUID(uid)).items():
+        for headers, cookies in (({"Authorization": f"Bearer {tok}"}, None), ({}, {"fw_session": tok})):
+            client.cookies.clear()
+            if cookies:
+                client.cookies.update(cookies)
+            _, me = await gql(client, ME, headers=headers)
+            assert me["data"]["me"] is None, name
+
+
+async def test_unexpected_errors_are_masked(client, session, monkeypatch):
+    async def boom():
+        raise OperationalError("SELECT secret FROM pg", {}, Exception("driver detail"))
+
+    monkeypatch.setattr(session, "commit", boom)
+    r, body = await gql(client, SIGN_UP, su())
+    assert body["errors"][0]["message"] == "Internal error"
+    assert "secret" not in r.text and "driver" not in r.text
