@@ -12,14 +12,14 @@ from app.sync.espn import WeekKey
 
 
 def is_locked(game: Game, now: datetime) -> bool:
-    return now >= game.kickoff_at
+    return now >= game.kickoff_at or game.status != "scheduled"
 
 
 async def _open_game(session: AsyncSession, clock: Clock, game_id: uuid.UUID) -> Game:
     game = await session.get(Game, game_id)
     if game is None:
         raise NotFound("No such game")
-    if is_locked(game, clock.now()) or game.status != "scheduled":
+    if is_locked(game, clock.now()):
         raise Locked("Picks are locked for this game")
     return game
 

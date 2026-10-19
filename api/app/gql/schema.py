@@ -12,11 +12,11 @@ from strawberry.extensions import MaskErrors, SchemaExtension
 from strawberry.fastapi import BaseContext, GraphQLRouter
 from strawberry.types import Info
 
-from app import auth, friends, picks
+from app import auth, friends, picks, results
 from app.clock import Clock
 from app.config import Settings
 from app.db import get_session
-from app.errors import DomainError, NotFound, Unauthenticated
+from app.errors import DomainError, Forbidden, NotFound, Unauthenticated
 from app.models import Game as GameModel
 from app.models import Pick as PickModel
 from app.models import User as UserModel
@@ -142,6 +142,49 @@ def _game_id(value: strawberry.ID) -> uuid.UUID:
 
 
 @strawberry.type
+class MatchupGame:
+    game: GameView
+    mine: PickView | None
+    theirs: PickView | None
+    point: str | None
+
+
+@strawberry.type
+class Matchup:
+    games: list[MatchupGame]
+    my_points: int
+    their_points: int
+
+
+@strawberry.type
+class HeadToHead:
+    points_for: int
+    points_against: int
+    weeks_won: int
+    weeks_lost: int
+    weeks_tied: int
+
+
+@strawberry.type
+class LeaderboardRow:
+    user_id: strawberry.ID
+    handle: str
+    correct_winners: int
+    avg_closeness: float | None
+
+
+def _score_view(s) -> PickView | None:
+    return PickView(home=s.home, away=s.away) if s else None
+
+
+def _friend_id(value: strawberry.ID) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(value))
+    except ValueError:
+        raise Forbidden("Not friends") from None
+
+
+@strawberry.type
 class FriendRequest:
     id: strawberry.ID
     from_: User = strawberry.field(name="from")
@@ -198,6 +241,42 @@ class Query:
         self, info: Info[Context, None], league: League, season: int, season_type: int, week: int
     ) -> Week:
         return await _week(info.context, WeekKey(league.value, season, season_type, week))
+
+    @strawberry.field
+    async def matchup(
+        self, info: Info[Context, None], friend_id: strawberry.ID, league: League, season: int,
+        season_type: int, week: int,
+    ) -> Matchup:
+        ctx = info.context
+        me = require_user(ctx)
+        m = await results.matchup(
+            ctx.session, ctx.clock, me, _friend_id(friend_id), WeekKey(league.value, season, season_type, week)
+        )
+        now = ctx.clock.now()
+        games = []
+        for mg in m.games:
+            gv = _to_game(mg.game, None, now)
+            gv.my_pick = _score_view(mg.mine)
+            games.append(MatchupGame(game=gv, mine=gv.my_pick, theirs=_score_view(mg.theirs), point=mg.point))
+        return Matchup(games=games, my_points=m.my_points, their_points=m.their_points)
+
+    @strawberry.field
+    async def head_to_head(
+        self, info: Info[Context, None], friend_id: strawberry.ID, league: League, season: int
+    ) -> HeadToHead:
+        ctx = info.context
+        h = await results.head_to_head(ctx.session, require_user(ctx), _friend_id(friend_id), league.value, season)
+        return HeadToHead(**vars(h))
+
+    @strawberry.field
+    async def leaderboard(self, info: Info[Context, None], league: League, season: int) -> list[LeaderboardRow]:
+        ctx = info.context
+        rows = await results.leaderboard(ctx.session, require_user(ctx), league.value, season)
+        return [
+            LeaderboardRow(user_id=strawberry.ID(str(r.user_id)), handle=r.handle,
+                           correct_winners=r.correct_winners, avg_closeness=r.avg_closeness)
+            for r in rows
+        ]
 
 
 @strawberry.type
