@@ -2,6 +2,10 @@ export function isLocked(kickoffAt: string, now: Date): boolean {
 	return now.getTime() >= new Date(kickoffAt).getTime();
 }
 
+/** Server flag OR local clock, so cards flip to Locked at kickoff without a reload. */
+export const lockedNow = (g: { kickoffAt: string; locked: boolean }, now: Date) =>
+	g.locked || isLocked(g.kickoffAt, now);
+
 export function validatePick(home: string, away: string): string | null {
 	const h = home.trim();
 	const a = away.trim();
@@ -45,7 +49,7 @@ export const fmtKickoff = (iso: string) =>
 export const teamLabel = (name: string, rank: number | null) => (rank ? `#${rank} ${name}` : name);
 
 export type SaveAction =
-	| { kind: 'none' }
+	| { kind: 'none'; clear?: boolean } // clear: wipe any stale status (half-typed pick)
 	| { kind: 'delete' }
 	| { kind: 'save'; home: number; away: number }
 	| { kind: 'error'; message: string };
@@ -55,6 +59,7 @@ export function saveAction(home: string, away: string, saved: PickView | null): 
 	const h = home.trim();
 	const a = away.trim();
 	if (!h && !a) return saved ? { kind: 'delete' } : { kind: 'none' };
+	if (!h !== !a) return { kind: 'none', clear: true }; // still typing the other score
 	const message = validatePick(h, a);
 	if (message) return { kind: 'error', message };
 	if (saved && saved.home === +h && saved.away === +a) return { kind: 'none' };

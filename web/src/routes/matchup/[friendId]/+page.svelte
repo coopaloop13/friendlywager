@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { gql } from '#lib/gql.js';
 	import {
 		GAME_FIELDS,
 		fmtKickoff,
+		isLocked,
 		leagueFrom,
 		teamLabel,
 		type GameView,
@@ -21,6 +23,11 @@
 	let wk = $state<WeekView | null>(null);
 	let m = $state<M | null>(null);
 	let h = $state<H | null>(null);
+	let now = $state(new Date());
+	onMount(() => {
+		const t = setInterval(() => (now = new Date()), 30_000);
+		return () => clearInterval(t);
+	});
 	let loading = $state(true);
 	let error = $state('');
 
@@ -113,7 +120,7 @@
 				<p>Me: {g.mine ? pickText(g.game, g.mine) : 'no pick'}</p>
 				<p>
 					Them:
-					{#if !g.game.locked}<em>hidden until kickoff</em>
+					{#if !isLocked(g.game.kickoffAt, now)}<em>hidden until kickoff</em>
 					{:else if g.theirs}{pickText(g.game, g.theirs)}
 					{:else}no pick{/if}
 				</p>

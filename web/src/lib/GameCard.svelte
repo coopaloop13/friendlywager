@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { gql, GqlError } from '#lib/gql.js';
-	import { fmtKickoff, saveAction, teamLabel, type GameView, type PickView } from '#lib/picks.js';
+	import { fmtKickoff, lockedNow, saveAction, teamLabel, type GameView, type PickView } from '#lib/picks.js';
 
 	let { game, pick }: { game: GameView; pick: PickView | null } = $props();
 
@@ -10,6 +11,13 @@
 	let away = $state(pick?.away?.toString() ?? '');
 	let status = $state('');
 	let failed = $state(false);
+
+	let now = $state(new Date());
+	onMount(() => {
+		const t = setInterval(() => (now = new Date()), 30_000);
+		return () => clearInterval(t);
+	});
+	const locked = $derived(lockedNow(game, now));
 
 	const hasScore = $derived(game.homeScore !== null && game.awayScore !== null);
 
@@ -24,7 +32,9 @@
 				dirty = false;
 				const act = saveAction(home, away, pick);
 				try {
-					if (act.kind === 'error') [status, failed] = [act.message, true];
+					if (act.kind === 'none') {
+						if (act.clear) [status, failed] = ['', false];
+					} else if (act.kind === 'error') [status, failed] = [act.message, true];
 					else if (act.kind === 'delete') {
 						await gql('mutation($id: ID!) { deletePick(gameId: $id) }', { id: game.id });
 						[pick, status, failed] = [null, 'Cleared', false];
@@ -52,7 +62,7 @@
 <article class="card">
 	<header>
 		<span class="when">{fmtKickoff(game.kickoffAt)}</span>
-		<span class="badge" class:locked={game.locked}>{game.locked ? 'Locked' : 'Open'}</span>
+		<span class="badge" class:locked={locked}>{locked ? 'Locked' : 'Open'}</span>
 	</header>
 	<div class="teams">
 		<div class="team">
@@ -67,7 +77,7 @@
 	{#if hasScore}<p class="meta">{game.status}</p>{/if}
 	{#if game.spread}<p class="meta">Spread: {game.spread}</p>{/if}
 
-	{#if game.locked}
+	{#if locked}
 		<p class="pick">
 			Your pick:
 			{#if pick}{game.awayAbbr} {pick.away} – {game.homeAbbr} {pick.home}{:else}none{/if}
