@@ -10,11 +10,11 @@ from strawberry.extensions import MaskErrors, SchemaExtension
 from strawberry.fastapi import BaseContext, GraphQLRouter
 from strawberry.types import Info
 
-from app import auth
+from app import auth, friends
 from app.clock import Clock
 from app.config import Settings
 from app.db import get_session
-from app.errors import DomainError, Unauthenticated
+from app.errors import DomainError, NotFound, Unauthenticated
 from app.models import User as UserModel
 
 COOKIE = "fw_session"
@@ -69,6 +69,12 @@ class User:
 
 
 @strawberry.type
+class FriendRequest:
+    id: strawberry.ID
+    from_: User = strawberry.field(name="from")
+
+
+@strawberry.type
 class AuthPayload:
     user: User
     token: str
@@ -95,6 +101,17 @@ class Query:
             return None
         u = await ctx.session.get(UserModel, ctx.user_id)
         return _to_user(u) if u else None
+
+    @strawberry.field
+    async def friends(self, info: Info[Context, None]) -> list[User]:
+        ctx = info.context
+        return [_to_user(u) for u in await friends.list_friends(ctx.session, require_user(ctx))]
+
+    @strawberry.field
+    async def pending_requests(self, info: Info[Context, None]) -> list[FriendRequest]:
+        ctx = info.context
+        rows = await friends.pending_incoming(ctx.session, require_user(ctx))
+        return [FriendRequest(id=strawberry.ID(str(f.id)), from_=_to_user(u)) for f, u in rows]
 
 
 @strawberry.type
@@ -123,6 +140,37 @@ class Mutation:
     @strawberry.mutation
     async def log_out(self, info: Info[Context, None]) -> bool:
         info.context.response.delete_cookie(COOKIE, httponly=True, samesite="lax")
+        return True
+
+    @strawberry.mutation
+    async def send_friend_request(self, info: Info[Context, None], handle: str) -> bool:
+        ctx = info.context
+        await friends.send_request(ctx.session, ctx.clock, require_user(ctx), handle)
+        await ctx.session.commit()
+        return True
+
+    @strawberry.mutation
+    async def respond_to_friend_request(self, info: Info[Context, None], id: strawberry.ID, accept: bool) -> bool:
+        ctx = info.context
+        me = require_user(ctx)
+        try:
+            fid = uuid.UUID(str(id))
+        except ValueError:
+            raise NotFound("No such request") from None
+        await friends.respond(ctx.session, ctx.clock, me, fid, accept)
+        await ctx.session.commit()
+        return True
+
+    @strawberry.mutation
+    async def remove_friend(self, info: Info[Context, None], user_id: strawberry.ID) -> bool:
+        ctx = info.context
+        me = require_user(ctx)
+        try:
+            uid = uuid.UUID(str(user_id))
+        except ValueError:
+            raise NotFound("Not friends") from None
+        await friends.remove(ctx.session, me, uid)
+        await ctx.session.commit()
         return True
 
 
