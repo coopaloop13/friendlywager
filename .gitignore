@@ -6,3 +6,6 @@ __pycache__
 .wrangler
 .pytest_cache
 *.egg-info
+
+# deploy
+deploy/api-worker/worker-configuration.d.ts

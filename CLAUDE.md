@@ -41,6 +41,18 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 - `docker compose run --rm api pytest`
 - `docker compose run --rm web npm test`
 
+## Deploy
+
+API: Cloudflare Worker `fw-api` (`deploy/api-worker`, serves `api.sportspicks.cc`) fronting a container built from `api/Dockerfile`; a 15-minute cron calls `/internal/sync`. Web: Cloudflare Worker `fw-web` with static assets (`web/`, serves `sportspicks.cc`, `API_URL=https://api.sportspicks.cc`). Domain `sportspicks.cc` lives on the user's Cloudflare account.
+
+1. Confirm `npx wrangler whoami` shows the intended Cloudflare account (never commit the email or account_id).
+2. Create a Neon database. `DATABASE_URL` must be `postgresql+asyncpg://USER:PASS@HOST/DB?ssl=require` (asyncpg scheme, TLS required).
+3. Migrations: none to run by hand. The container runs `alembic upgrade head` on every start (optional manual run: `DATABASE_URL=... alembic upgrade head` from `api/`).
+4. In `deploy/api-worker`, `npm i`, then `npx wrangler secret put` for each of `DATABASE_URL`, `SESSION_SECRET` (>=32 chars), `INVITE_CODE`, `SYNC_SECRET` (>=16 chars). Generate with `openssl rand -base64 48`. The first `secret put` before the first deploy will offer to create the Worker; accept.
+5. `npx wrangler deploy` in `deploy/api-worker` (needs Docker running; builds the image with the Dockerfile default `INSTALL_DEV=0`). Allow a few minutes for container provisioning.
+6. Web: `cd web && npm run build && npx wrangler deploy` (use `docker compose run --rm --no-deps web sh -c "npm run build && npx wrangler deploy"` if host Node fails the engine check).
+7. Dry runs: `npx wrangler deploy --dry-run` in either directory.
+
 ## Pointers
 
 - Spec: `docs/superpowers/specs/2026-10-19-friendly-wager-design.md`
