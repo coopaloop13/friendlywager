@@ -12,22 +12,25 @@
 
 	$effect(() => {
 		const l = league;
+		let stale = false;
 		loading = true;
+		rows = null;
 		error = '';
 		gql<{ currentWeek: { season: number } | null }>(
 			'query($l: League!) { currentWeek(league: $l) { season } }',
 			{ l }
 		)
 			.then(async ({ currentWeek }) => {
-				if (!currentWeek) return (rows = null);
+				if (stale || !currentWeek) return;
 				const d = await gql<{ leaderboard: Row[] }>(
 					'query($l: League!, $s: Int!) { leaderboard(league: $l, season: $s) { userId handle correctWinners avgCloseness } }',
 					{ l, s: currentWeek.season }
 				);
-				rows = d.leaderboard;
+				if (!stale) rows = d.leaderboard;
 			})
-			.catch((e) => (error = e.message))
-			.finally(() => (loading = false));
+			.catch((e) => stale || (error = e.message))
+			.finally(() => stale || (loading = false));
+		return () => (stale = true);
 	});
 </script>
 

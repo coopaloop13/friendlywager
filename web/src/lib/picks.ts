@@ -43,3 +43,20 @@ export const fmtKickoff = (iso: string) =>
 	});
 
 export const teamLabel = (name: string, rank: number | null) => (rank ? `#${rank} ${name}` : name);
+
+export type SaveAction =
+	| { kind: 'none' }
+	| { kind: 'delete' }
+	| { kind: 'save'; home: number; away: number }
+	| { kind: 'error'; message: string };
+
+/** What blur should do, given the inputs and the last pick known saved on the server. */
+export function saveAction(home: string, away: string, saved: PickView | null): SaveAction {
+	const h = home.trim();
+	const a = away.trim();
+	if (!h && !a) return saved ? { kind: 'delete' } : { kind: 'none' };
+	const message = validatePick(h, a);
+	if (message) return { kind: 'error', message };
+	if (saved && saved.home === +h && saved.away === +a) return { kind: 'none' };
+	return { kind: 'save', home: +h, away: +a };
+}

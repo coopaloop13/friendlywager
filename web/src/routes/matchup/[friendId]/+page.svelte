@@ -16,7 +16,7 @@
 	type M = { games: MG[]; myPoints: number; theirPoints: number };
 	type H = { pointsFor: number; pointsAgainst: number; weeksWon: number; weeksLost: number; weeksTied: number };
 
-	const friendId = $derived(page.params.friendId);
+	const friendId = $derived(page.params.friendId ?? "");
 	const league = $derived(leagueFrom(page.url.searchParams));
 	let wk = $state<WeekView | null>(null);
 	let m = $state<M | null>(null);
@@ -28,46 +28,57 @@
 		matchup(friendId: $f, league: $l, season: $s, seasonType: $t, week: $w) {
 			myPoints theirPoints games { mine { home away } theirs { home away } point game { ${GAME_FIELDS} } } } }`;
 
-	async function loadWeek(l: typeof league, w: WeekView) {
+	let token = 0; // only the latest request may apply its result
+
+	async function loadWeek(l: typeof league, w: WeekView, f: string) {
+		const mine = ++token;
+		wk = w;
+		m = null;
 		loading = true;
 		error = '';
 		try {
 			const [d, hh] = await Promise.all([
-				gql<{ matchup: M }>(MATCHUP, { f: friendId, l, s: w.season, t: w.seasonType, w: w.week }),
+				gql<{ matchup: M }>(MATCHUP, { f, l, s: w.season, t: w.seasonType, w: w.week }),
 				gql<{ headToHead: H }>(
 					'query($f: ID!, $l: League!, $s: Int!) { headToHead(friendId: $f, league: $l, season: $s) { pointsFor pointsAgainst weeksWon weeksLost weeksTied } }',
-					{ f: friendId, l, s: w.season }
+					{ f, l, s: w.season }
 				)
 			]);
-			wk = w;
+			if (mine !== token) return;
 			m = d.matchup;
 			h = hh.headToHead;
 		} catch (e) {
-			error = (e as Error).message;
+			if (mine === token) error = (e as Error).message;
 		} finally {
-			loading = false;
+			if (mine === token) loading = false;
 		}
 	}
 
 	$effect(() => {
 		const l = league;
+		const f = friendId;
+		const mine = ++token;
+		wk = m = h = null;
+		error = '';
+		loading = true;
 		gql<{ currentWeek: WeekView | null }>(
 			'query($l: League!) { currentWeek(league: $l) { league season seasonType week } }',
 			{ l }
 		)
 			.then((d) => {
-				if (d.currentWeek) return loadWeek(l, d.currentWeek);
-				wk = null;
+				if (mine !== token) return;
+				if (d.currentWeek) return loadWeek(l, d.currentWeek, f);
 				loading = false;
 			})
 			.catch((e) => {
+				if (mine !== token) return;
 				error = e.message;
 				loading = false;
 			});
 	});
 
 	function step(d: number) {
-		if (wk && wk.week + d >= 1) return loadWeek(league, { ...wk, week: wk.week + d });
+		if (wk && wk.week + d >= 1) return loadWeek(league, { ...wk, week: wk.week + d }, friendId);
 	}
 
 	const pickText = (g: GameView, p: PickView) => `${g.awayAbbr} ${p.away} – ${g.homeAbbr} ${p.home}`;
@@ -86,6 +97,7 @@
 		<span>Week {wk.week}</span>
 		<button onclick={() => step(1)} aria-label="Next week">›</button>
 	</div>
+	{#if loading}<p>Loading…</p>{/if}
 	{#if m && !m.games.length}<p>No games this week.</p>{/if}
 	{#if m}
 		<p class="totals"><strong>You {m.myPoints}</strong> – <strong>{m.theirPoints} Them</strong></p>

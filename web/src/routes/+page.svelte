@@ -15,15 +15,18 @@
 
 	$effect(() => {
 		const l = league;
+		let stale = false;
 		loading = true;
+		week = null;
 		error = '';
 		gql<{ currentWeek: W }>(
 			`query($l: League!) { currentWeek(league: $l) { league season seasonType week games { ${GAME_FIELDS} myPick { home away } } } }`,
 			{ l }
 		)
-			.then((d) => (week = d.currentWeek))
-			.catch((e) => (error = e.message))
-			.finally(() => (loading = false));
+			.then((d) => stale || (week = d.currentWeek))
+			.catch((e) => stale || (error = e.message))
+			.finally(() => stale || (loading = false));
+		return () => (stale = true);
 	});
 
 	async function logOut() {

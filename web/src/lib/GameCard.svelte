@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { gql, GqlError } from '#lib/gql.js';
-	import { fmtKickoff, teamLabel, validatePick, type GameView, type PickView } from '#lib/picks.js';
+	import { fmtKickoff, saveAction, teamLabel, type GameView, type PickView } from '#lib/picks.js';
 
 	let { game, pick }: { game: GameView; pick: PickView | null } = $props();
 
@@ -13,36 +13,38 @@
 
 	const hasScore = $derived(game.homeScore !== null && game.awayScore !== null);
 
+	let busy = false;
+	let dirty = false;
+
 	async function save() {
-		const h = home.trim();
-		const a = away.trim();
+		if (busy) return (dirty = true); // re-run once the in-flight save finishes
+		busy = true;
 		try {
-			if (!h && !a) {
-				if (!pick) return;
-				await gql('mutation($id: ID!) { deletePick(gameId: $id) }', { id: game.id });
-				pick = null;
-				status = 'Cleared';
-			} else {
-				const err = validatePick(h, a);
-				if (err) {
-					// wait until both are filled before nagging
-					if (h && a) [status, failed] = [err, true];
-					return;
+			do {
+				dirty = false;
+				const act = saveAction(home, away, pick);
+				try {
+					if (act.kind === 'error') [status, failed] = [act.message, true];
+					else if (act.kind === 'delete') {
+						await gql('mutation($id: ID!) { deletePick(gameId: $id) }', { id: game.id });
+						[pick, status, failed] = [null, 'Cleared', false];
+					} else if (act.kind === 'save') {
+						await gql(
+							'mutation($id: ID!, $h: Int!, $a: Int!) { savePick(gameId: $id, home: $h, away: $a) { home away } }',
+							{ id: game.id, h: act.home, a: act.away }
+						);
+						[pick, status, failed] = [{ home: act.home, away: act.away }, 'Saved', false];
+					}
+				} catch (e) {
+					failed = true;
+					status =
+						e instanceof GqlError && e.code === 'LOCKED'
+							? 'Locked — game has started'
+							: (e as Error).message;
 				}
-				await gql(
-					'mutation($id: ID!, $h: Int!, $a: Int!) { savePick(gameId: $id, home: $h, away: $a) { home away } }',
-					{ id: game.id, h: +h, a: +a }
-				);
-				pick = { home: +h, away: +a };
-				status = 'Saved';
-			}
-			failed = false;
-		} catch (e) {
-			failed = true;
-			status =
-				e instanceof GqlError && e.code === 'LOCKED'
-					? 'Locked — game has started'
-					: (e as Error).message;
+			} while (dirty);
+		} finally {
+			busy = false;
 		}
 	}
 </script>
