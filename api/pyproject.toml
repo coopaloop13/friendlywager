@@ -3,20 +3,20 @@ name = "friendly-wager-api"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi",
-  "uvicorn",
-  "sqlalchemy[asyncio]",
-  "asyncpg",
-  "alembic",
-  "pydantic-settings",
-  "argon2-cffi",
-  "PyJWT",
-  "strawberry-graphql[fastapi]",
-  "httpx",
+  "fastapi==0.149.0",
+  "uvicorn==0.54.0",
+  "sqlalchemy[asyncio]==2.1.5",
+  "asyncpg==0.32.0",
+  "alembic==1.20.0",
+  "pydantic-settings==2.16.0",
+  "argon2-cffi==25.1.0",
+  "PyJWT==2.15.1",
+  "strawberry-graphql[fastapi]==0.336.0",
+  "httpx==0.28.1",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+dev = ["pytest==9.1.1", "pytest-asyncio==1.4.0"]
 
 [tool.setuptools]
 packages = ["app", "app.gql", "app.sync"]
