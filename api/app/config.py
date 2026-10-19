@@ -5,6 +5,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str
     session_secret: str = Field(min_length=32)
-    invite_code: str
+    invite_code: str = Field(min_length=6)
     sync_secret: str = Field(min_length=16)
     cookie_secure: bool = False

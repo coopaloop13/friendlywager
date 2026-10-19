@@ -365,4 +365,7 @@ schema = strawberry.Schema(
     mutation=Mutation,
     extensions=[DomainErrors, lambda: MaskErrors(should_mask_error=_mask_unexpected, error_message="Internal error")],
 )
-graphql_router = GraphQLRouter(schema, context_getter=get_context)
+
+
+def make_graphql_router(ide: bool) -> GraphQLRouter:
+    return GraphQLRouter(schema, context_getter=get_context, graphql_ide="graphiql" if ide else None)

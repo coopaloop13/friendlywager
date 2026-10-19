@@ -63,6 +63,8 @@ def parse_scoreboard(league: str, payload: dict) -> tuple[WeekKey, list[GameData
     games = []
     for e in payload["events"]:
         comp = e["competitions"][0]
+        if any("pro bowl" in n.get("headline", "").lower() for n in comp.get("notes") or []):
+            continue  # NFL Pro Bowl: not a real pick'em game (ESPN note headline "Pro Bowl Games")
         side = {c["homeAway"]: c for c in comp["competitors"]}
         t = e["status"]["type"]
         status = NAME_OVERRIDE.get(t["name"]) or STATE[t["state"]]

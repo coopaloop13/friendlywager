@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clock import Clock, SystemClock
 from app.config import Settings
 from app.db import get_session
-from app.gql.schema import graphql_router
+from app.gql.schema import make_graphql_router
 from app.sync.espn import ScoreboardClient, get_scoreboard_client
 from app.sync.service import sync_league
 
@@ -30,9 +30,10 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
         expected = request.app.state.settings.sync_secret.encode()
         if not hmac.compare_digest(x_sync_secret.encode(), expected):
             raise HTTPException(401, "bad sync secret")
-        counts = {lg: await sync_league(session, espn, lg) for lg in ("nfl", "cfb")}
+        counts = {lg: await sync_league(session, espn, lg, request.app.state.clock) for lg in ("nfl", "cfb")}
         await session.commit()  # one transaction for both leagues
         return counts
 
-    app.include_router(graphql_router, prefix="/graphql")
+    # no public GraphiQL in prod
+    app.include_router(make_graphql_router(ide=not app.state.settings.cookie_secure), prefix="/graphql")
     return app
