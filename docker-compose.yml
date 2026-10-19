@@ -26,5 +26,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+  sync:
+    image: curlimages/curl
+    env_file: .env
+    depends_on:
+      - api
+    entrypoint: ["sh", "-c"]
+    command:
+      - 'while true; do curl -fsS --retry 15 --retry-connrefused --retry-delay 2 -X POST -H "X-Sync-Secret: $$SYNC_SECRET" http://api:8000/internal/sync; echo; sleep 900; done'
 volumes:
   pgdata:
