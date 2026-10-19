@@ -107,23 +107,23 @@ async def matchup(
 
 
 async def head_to_head(
-    session: AsyncSession, me: uuid.UUID, friend_id: uuid.UUID, league: str, season: int
+    session: AsyncSession, clock: Clock, me: uuid.UUID, friend_id: uuid.UUID, league: str, season: int
 ) -> HeadToHead:
     await _require_friend(session, me, friend_id)
     rows = await _pair_rows(session, me, friend_id, Game.league == league, Game.season == season)
-    weeks: dict[tuple[int, int], list[int]] = {}  # only weeks where someone picked
+    now = clock.now()
+    # only weeks where someone picked a game that has kicked off; earlier picks must not leak
+    weeks: dict[tuple[int, int], list[int]] = {}
     pts_for = pts_against = 0
     for g, pa, pb in rows:
         wk = (g.season_type, g.week)
-        if pa or pb:
+        if (pa or pb) and now >= g.kickoff_at:
             weeks.setdefault(wk, [0, 0])
         point = _point(g, _score(pa), _score(pb))
-        if point == "me":
-            pts_for += 1
-            weeks[wk][0] += 1
-        elif point == "them":
-            pts_against += 1
-            weeks[wk][1] += 1
+        pts_for += point == "me"
+        pts_against += point == "them"
+        if point and wk in weeks:
+            weeks[wk][point == "them"] += 1
     outcomes = [week_result(a, b) for a, b in weeks.values()]
     return HeadToHead(pts_for, pts_against, outcomes.count("a"), outcomes.count("b"), outcomes.count("tie"))
 

@@ -265,7 +265,7 @@ class Query:
         self, info: Info[Context, None], friend_id: strawberry.ID, league: League, season: int
     ) -> HeadToHead:
         ctx = info.context
-        h = await results.head_to_head(ctx.session, require_user(ctx), _friend_id(friend_id), league.value, season)
+        h = await results.head_to_head(ctx.session, ctx.clock, require_user(ctx), _friend_id(friend_id), league.value, season)
         return HeadToHead(**vars(h))
 
     @strawberry.field

@@ -121,7 +121,7 @@ async def test_matchup_forbidden_for_non_friend(session, clock, now):
     with pytest.raises(Forbidden):
         await results.matchup(session, clock, me, stranger, W1)
     with pytest.raises(Forbidden):
-        await results.head_to_head(session, me, stranger, "nfl", 2026)
+        await results.head_to_head(session, clock, me, stranger, "nfl", 2026)
 
 
 async def test_matchup_forbidden_after_unfriend(client, session, now):
@@ -152,28 +152,39 @@ async def test_matchup_reflects_score_correction(session, clock, pair):
     assert m.games[0].point == "them" and (m.my_points, m.their_points) == (0, 1)
 
 
-async def test_head_to_head_includes_weeks_before_friendship(session, now):
+async def test_head_to_head_includes_weeks_before_friendship(session, clock, now):
     me, them = await mkuser(session, "josh"), await mkuser(session, "maria")
     g = await mkgame(session, kickoff=NOW - timedelta(days=30), score=(20, 10))
     await pick(session, me, g, 21, 10)
     await befriend(session, me, them, accepted_at=NOW)
-    h = await results.head_to_head(session, me, them, "nfl", 2026)
+    h = await results.head_to_head(session, clock, me, them, "nfl", 2026)
     assert h == results.HeadToHead(points_for=1, points_against=0, weeks_won=1, weeks_lost=0, weeks_tied=0)
 
 
-async def test_head_to_head_skips_weeks_neither_picked(session, pair):
+async def test_head_to_head_skips_weeks_neither_picked(session, clock, pair):
     me, them = pair
     await mkgame(session, score=(20, 10), week=1)                # nobody picked: skipped
     g2 = await mkgame(session, score=(20, 10), week=2)
     await pick(session, them, g2, 21, 10)                         # they win week 2
     g3 = await mkgame(session, score=(20, 10), season_type=3, week=1)
     await pick(session, me, g3, 21, 10)                           # postseason counts too
-    g4 = await mkgame(session, kickoff=NOW + timedelta(days=1), week=3)
-    await pick(session, me, g4, 21, 10)                           # picked, unplayed: week 3 tied 0-0
+    g4 = await mkgame(session, kickoff=NOW - timedelta(hours=1), status="in_progress", week=3)
+    await pick(session, me, g4, 21, 10)                           # picked, kicked off, not final: week 3 tied 0-0
     other = await mkgame(session, score=(20, 10), league="cfb")
     await pick(session, me, other, 21, 10)                        # other league ignored
-    h = await results.head_to_head(session, me, them, "nfl", 2026)
+    h = await results.head_to_head(session, clock, me, them, "nfl", 2026)
     assert h == results.HeadToHead(points_for=1, points_against=1, weeks_won=1, weeks_lost=1, weeks_tied=1)
+
+
+async def test_head_to_head_ignores_picks_before_kickoff(session, clock, pair):
+    me, them = pair
+    g = await mkgame(session, kickoff=NOW + timedelta(days=3), week=5)
+    await pick(session, them, g, 21, 10)  # friend picks Sunday's game on Thursday
+    empty = results.HeadToHead(points_for=0, points_against=0, weeks_won=0, weeks_lost=0, weeks_tied=0)
+    assert await results.head_to_head(session, clock, me, them, "nfl", 2026) == empty
+    clock.dt = NOW + timedelta(days=3)
+    h = await results.head_to_head(session, clock, me, them, "nfl", 2026)
+    assert h == results.HeadToHead(points_for=0, points_against=0, weeks_won=0, weeks_lost=0, weeks_tied=1)
 
 
 async def test_head_to_head_tied_week(client, session, now):
