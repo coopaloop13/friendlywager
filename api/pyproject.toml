@@ -9,13 +9,16 @@ dependencies = [
   "asyncpg",
   "alembic",
   "pydantic-settings",
+  "argon2-cffi",
+  "PyJWT",
+  "strawberry-graphql[fastapi]",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio", "httpx"]
 
 [tool.setuptools]
-packages = ["app"]
+packages = ["app", "app.gql"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
