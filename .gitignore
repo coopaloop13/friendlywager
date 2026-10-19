@@ -1,1 +1,8 @@
 .superpowers/
+.env
+node_modules
+__pycache__
+.svelte-kit
+.wrangler
+.pytest_cache
+*.egg-info
