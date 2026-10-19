@@ -39,4 +39,14 @@ describe('graphql proxy', () => {
 		const res = await call(new Response('{"errors":[]}', { status: 502 })).res;
 		expect(res.status).toBe(502);
 	});
+
+	it('returns 502 graphql error when API is unreachable', async () => {
+		const f = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
+		const request = new Request('http://localhost/graphql', { method: 'POST', body: '{}' });
+		const res = await POST({ request, fetch: f } as never);
+		expect(res.status).toBe(502);
+		expect(await res.json()).toEqual({
+			errors: [{ message: 'API unavailable', extensions: { code: 'UPSTREAM_UNAVAILABLE' } }]
+		});
+	});
 });

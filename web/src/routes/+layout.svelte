@@ -31,6 +31,11 @@
 		border-color: #1a5fd0;
 		cursor: pointer;
 	}
+	:global(label) {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
 	:global(form) {
 		display: flex;
 		flex-direction: column;

@@ -24,8 +24,12 @@
 
 <h1>Log in</h1>
 <form onsubmit={submit}>
-	<input type="email" placeholder="Email" autocomplete="email" required bind:value={email} />
-	<input type="password" placeholder="Password" autocomplete="current-password" required bind:value={password} />
+	<label>Email
+		<input type="email" autocomplete="email" required bind:value={email} />
+	</label>
+	<label>Password
+		<input type="password" autocomplete="current-password" required bind:value={password} />
+	</label>
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
 	<button>Log in</button>
 </form>

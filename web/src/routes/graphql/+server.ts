@@ -7,11 +7,16 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		const v = request.headers.get(h);
 		if (v) headers.set(h, v);
 	}
-	const up = await fetch(`${API_URL}/graphql`, {
-		method: 'POST',
-		headers,
-		body: await request.text()
-	});
+	const body = await request.text();
+	let up: Response;
+	try {
+		up = await fetch(`${API_URL}/graphql`, { method: 'POST', headers, body });
+	} catch {
+		return Response.json(
+			{ errors: [{ message: 'API unavailable', extensions: { code: 'UPSTREAM_UNAVAILABLE' } }] },
+			{ status: 502 }
+		);
+	}
 	const out = new Headers();
 	const ct = up.headers.get('content-type');
 	if (ct) out.set('content-type', ct);

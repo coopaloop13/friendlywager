@@ -26,10 +26,18 @@
 
 <h1>Sign up</h1>
 <form onsubmit={submit}>
-	<input type="email" placeholder="Email" autocomplete="email" required bind:value={email} />
-	<input type="password" placeholder="Password" autocomplete="new-password" required bind:value={password} />
-	<input placeholder="Handle" autocapitalize="none" required bind:value={handle} />
-	<input placeholder="Invite code" required bind:value={inviteCode} />
+	<label>Email
+		<input type="email" autocomplete="email" required bind:value={email} />
+	</label>
+	<label>Password
+		<input type="password" autocomplete="new-password" required bind:value={password} />
+	</label>
+	<label>Handle
+		<input autocapitalize="none" required bind:value={handle} autocomplete="username" />
+	</label>
+	<label>Invite code
+		<input required bind:value={inviteCode} />
+	</label>
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
 	<button>Sign up</button>
 </form>

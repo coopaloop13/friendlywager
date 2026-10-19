@@ -17,7 +17,12 @@ export async function gql<T>(
 		headers: { 'content-type': 'application/json' },
 		body: JSON.stringify({ query, variables })
 	});
-	const json = await res.json();
+	let json;
+	try {
+		json = await res.json();
+	} catch {
+		throw new GqlError(`Request failed (${res.status})`);
+	}
 	if (json.errors?.length) {
 		const e = json.errors[0];
 		throw new GqlError(e.message, e.extensions?.code);
