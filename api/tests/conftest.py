@@ -1,9 +1,20 @@
+import os
 from datetime import datetime
 
 import httpx
 import pytest
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
+from app.config import Settings
+from app.db import get_session
 from app.main import create_app
+
+TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
+TABLES = "users, friendships, games, picks, league_state"
 
 
 class FixedClock:
@@ -14,8 +25,38 @@ class FixedClock:
         return self.dt
 
 
+@pytest.fixture(scope="session")
+def migrated():
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
+    command.upgrade(cfg, "head")
+
+
 @pytest.fixture
-async def client():
-    app = create_app()
+async def session(migrated):
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    async with AsyncSession(engine, expire_on_commit=False) as s:
+        yield s
+        await s.rollback()
+        await s.execute(text(f"TRUNCATE {TABLES} RESTART IDENTITY CASCADE"))
+        await s.commit()
+    await engine.dispose()
+
+
+@pytest.fixture
+async def client(session):
+    settings = Settings(
+        database_url=TEST_DATABASE_URL,
+        session_secret="test-secret",
+        invite_code="test-invite",
+        sync_secret="test-sync",
+        cookie_secure=False,
+    )
+    app = create_app(settings)
+
+    async def _session():
+        yield session
+
+    app.dependency_overrides[get_session] = _session
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
         yield c
