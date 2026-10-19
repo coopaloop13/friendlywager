@@ -50,7 +50,7 @@ async def client(session):
         database_url=TEST_DATABASE_URL,
         session_secret=TEST_SECRET,
         invite_code="test-invite",
-        sync_secret="test-sync",
+        sync_secret="test-sync-secret-0123456789",
         cookie_secure=False,
     )
     app = create_app(settings)

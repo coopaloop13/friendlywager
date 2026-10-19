@@ -70,3 +70,8 @@ def test_parse_spread_and_scores():
 def test_parse_status_mapping(state, name, expected):
     _, [g] = parse_scoreboard("nfl", payload(event(state, name)))
     assert g.status == expected
+
+
+def test_parse_canceled_post_has_no_scores():
+    _, [g] = parse_scoreboard("nfl", payload(event("post", "STATUS_CANCELED")))
+    assert g.status == "canceled" and g.home_score is None and g.away_score is None

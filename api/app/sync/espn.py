@@ -66,7 +66,7 @@ def parse_scoreboard(league: str, payload: dict) -> tuple[WeekKey, list[GameData
         side = {c["homeAway"]: c for c in comp["competitors"]}
         t = e["status"]["type"]
         status = NAME_OVERRIDE.get(t["name"]) or STATE[t["state"]]
-        scored = t["state"] in ("in", "post")
+        scored = status in ("in_progress", "final")
         odds = comp.get("odds") or []
         games.append(
             GameData(

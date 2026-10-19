@@ -88,6 +88,16 @@ async def test_internal_sync_requires_secret(client):
 async def test_internal_sync_runs(client, session):
     fake = FakeClient(pl(6, ev("1")))
     client._transport.app.dependency_overrides[get_scoreboard_client] = lambda: fake
-    r = await client.post("/internal/sync", headers={"X-Sync-Secret": "test-sync"})
+    r = await client.post("/internal/sync", headers={"X-Sync-Secret": "test-sync-secret-0123456789"})
     assert r.status_code == 200 and r.json() == {"nfl": 1, "cfb": 0}
     assert await count(session) == 1
+
+
+def test_empty_sync_secret_rejected():
+    import pytest
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(database_url="x", session_secret="s" * 32, invite_code="i", sync_secret="")
