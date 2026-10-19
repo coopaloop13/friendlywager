@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -45,7 +45,12 @@ async def session(migrated):
 
 
 @pytest.fixture
-async def client(session):
+def clock():
+    return FixedClock(datetime.now(UTC))
+
+
+@pytest.fixture
+async def client(session, clock):
     settings = Settings(
         database_url=TEST_DATABASE_URL,
         session_secret=TEST_SECRET,
@@ -53,7 +58,7 @@ async def client(session):
         sync_secret="test-sync-secret-0123456789",
         cookie_secure=False,
     )
-    app = create_app(settings)
+    app = create_app(settings, clock)
 
     async def _session():
         yield session

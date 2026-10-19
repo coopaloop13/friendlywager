@@ -1,5 +1,7 @@
+import enum
 import inspect
 import uuid
+from datetime import datetime
 from dataclasses import dataclass
 
 import strawberry
@@ -10,12 +12,15 @@ from strawberry.extensions import MaskErrors, SchemaExtension
 from strawberry.fastapi import BaseContext, GraphQLRouter
 from strawberry.types import Info
 
-from app import auth, friends
+from app import auth, friends, picks
 from app.clock import Clock
 from app.config import Settings
 from app.db import get_session
 from app.errors import DomainError, NotFound, Unauthenticated
+from app.models import Game as GameModel
+from app.models import Pick as PickModel
 from app.models import User as UserModel
+from app.sync.espn import WeekKey
 
 COOKIE = "fw_session"
 COOKIE_MAX_AGE = auth.SESSION_DAYS * 24 * 3600
@@ -68,6 +73,74 @@ class User:
     handle: str
 
 
+@strawberry.enum
+class League(enum.Enum):
+    NFL = "nfl"
+    CFB = "cfb"
+
+
+@strawberry.type
+class PickView:
+    home: int
+    away: int
+
+
+@strawberry.type
+class GameView:
+    id: strawberry.ID
+    home_name: str
+    home_abbr: str
+    away_name: str
+    away_abbr: str
+    home_rank: int | None
+    away_rank: int | None
+    kickoff_at: datetime
+    status: str
+    home_score: int | None
+    away_score: int | None
+    spread: str | None
+    locked: bool
+    my_pick: PickView | None
+
+
+@strawberry.type
+class Week:
+    league: League
+    season: int
+    season_type: int
+    week: int
+    games: list[GameView]
+
+
+def _to_pick(p: PickModel | None) -> PickView | None:
+    return PickView(home=p.pred_home, away=p.pred_away) if p else None
+
+
+def _to_game(g: GameModel, p: PickModel | None, now: datetime) -> GameView:
+    return GameView(
+        id=strawberry.ID(str(g.id)), home_name=g.home_name, home_abbr=g.home_abbr,
+        away_name=g.away_name, away_abbr=g.away_abbr, home_rank=g.home_rank, away_rank=g.away_rank,
+        kickoff_at=g.kickoff_at, status=g.status, home_score=g.home_score, away_score=g.away_score,
+        spread=g.spread_text, locked=picks.is_locked(g, now), my_pick=_to_pick(p),
+    )
+
+
+async def _week(ctx: Context, key: WeekKey) -> Week:
+    rows = await picks.week_games(ctx.session, require_user(ctx), key)
+    now = ctx.clock.now()
+    return Week(
+        league=League(key.league), season=key.season, season_type=key.season_type, week=key.week,
+        games=[_to_game(g, p, now) for g, p in rows],
+    )
+
+
+def _game_id(value: strawberry.ID) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(value))
+    except ValueError:
+        raise NotFound("No such game") from None
+
+
 @strawberry.type
 class FriendRequest:
     id: strawberry.ID
@@ -112,6 +185,19 @@ class Query:
         ctx = info.context
         rows = await friends.pending_incoming(ctx.session, require_user(ctx))
         return [FriendRequest(id=strawberry.ID(str(f.id)), from_=_to_user(u)) for f, u in rows]
+
+    @strawberry.field
+    async def current_week(self, info: Info[Context, None], league: League) -> Week | None:
+        ctx = info.context
+        require_user(ctx)
+        key = await picks.current_week(ctx.session, league.value)
+        return await _week(ctx, key) if key else None
+
+    @strawberry.field
+    async def week(
+        self, info: Info[Context, None], league: League, season: int, season_type: int, week: int
+    ) -> Week:
+        return await _week(info.context, WeekKey(league.value, season, season_type, week))
 
 
 @strawberry.type
@@ -170,6 +256,22 @@ class Mutation:
         except ValueError:
             raise NotFound("Not friends") from None
         await friends.remove(ctx.session, me, uid)
+        await ctx.session.commit()
+        return True
+
+    @strawberry.mutation
+    async def save_pick(self, info: Info[Context, None], game_id: strawberry.ID, home: int, away: int) -> PickView:
+        ctx = info.context
+        me = require_user(ctx)
+        p = await picks.save_pick(ctx.session, ctx.clock, me, _game_id(game_id), home, away)
+        await ctx.session.commit()
+        return _to_pick(p)
+
+    @strawberry.mutation
+    async def delete_pick(self, info: Info[Context, None], game_id: strawberry.ID) -> bool:
+        ctx = info.context
+        me = require_user(ctx)
+        await picks.delete_pick(ctx.session, ctx.clock, me, _game_id(game_id))
         await ctx.session.commit()
         return True
 
