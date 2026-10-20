@@ -36,7 +36,7 @@
 		<input autocapitalize="none" required bind:value={handle} autocomplete="username" />
 	</label>
 	<label>Invite code
-		<input required bind:value={inviteCode} />
+		<input required bind:value={inviteCode} autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" />
 	</label>
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
 	<button>Sign up</button>

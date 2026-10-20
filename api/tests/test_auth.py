@@ -42,6 +42,11 @@ async def test_sign_up_bad_invite_forbidden(client):
     assert code(body) == "FORBIDDEN"
 
 
+async def test_sign_up_invite_ignores_case_and_spaces(client):
+    _, body = await gql(client, SIGN_UP, su(invite=" Test-Invite "))
+    assert body["data"]["signUp"]["user"]["handle"] == "josh"
+
+
 async def test_sign_up_duplicate_handle_any_case_conflict(client):
     await gql(client, SIGN_UP, su())
     _, body = await gql(client, SIGN_UP, su(email="b@x.com", handle="Josh"))

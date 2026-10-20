@@ -45,7 +45,7 @@ def read_token(token: str, secret: str) -> uuid.UUID | None:
 async def sign_up(
     session: AsyncSession, *, email: str, password: str, handle: str, invite_code: str, expected_invite: str
 ) -> User:
-    if invite_code != expected_invite:
+    if invite_code.strip().lower() != expected_invite.strip().lower():  # phones auto-capitalize
         raise Forbidden("Invalid invite code")
     email, handle = email.strip().lower(), handle.strip().lower()
     if len(password) < 8:
