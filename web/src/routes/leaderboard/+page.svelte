@@ -49,7 +49,7 @@
 		<tbody>
 			{#each rows as r, i (r.userId)}
 				<tr>
-					<td>{i + 1}</td>
+					<td class="rank">{['🥇', '🥈', '🥉'][i] ?? i + 1}</td>
 					<td>@{r.handle}</td>
 					<td>{r.correctWinners}</td>
 					<td>{r.avgCloseness === null ? '–' : r.avgCloseness.toFixed(1)}</td>
@@ -63,11 +63,29 @@
 	table {
 		width: 100%;
 		border-collapse: collapse;
+		background: var(--chalk);
+		border-radius: 14px;
+		overflow: hidden;
+		box-shadow: 0 2px 6px rgb(0 0 0 / 0.06);
+	}
+	th {
+		background: #111;
+		color: var(--gold);
+		font-family: var(--display);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-size: 0.8rem;
+		font-weight: 500;
 	}
 	th,
 	td {
 		text-align: left;
-		padding: 0.6rem 0.4rem;
-		border-bottom: 1px solid #eee;
+		padding: 0.6rem 0.5rem;
+		border-bottom: 1px solid var(--line);
+	}
+	.rank {
+		font-family: var(--display);
+		font-size: 1.1rem;
+		text-align: center;
 	}
 </style>

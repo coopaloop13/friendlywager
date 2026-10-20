@@ -5,10 +5,49 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
-		<meta name="theme-color" content="#1a5fd0" />
+		<meta name="theme-color" content="#14532d" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Graduate&family=Oswald:wght@500;700&display=swap" rel="stylesheet" />
+		<style>
+			/* Shown until the app renders (ssr is off, and the API may be cold-starting). */
+			#boot {
+				position: fixed;
+				inset: 0;
+				display: grid;
+				place-content: center;
+				justify-items: center;
+				gap: 0.75rem;
+				background: #14532d repeating-linear-gradient(90deg, transparent 0 48px, rgb(255 255 255 / 0.08) 48px 50px);
+				color: #fff;
+				font: 700 1.1rem Oswald, system-ui, sans-serif;
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+			}
+			#boot svg {
+				width: 72px;
+				animation: fw-boot 0.9s linear infinite;
+			}
+			@keyframes fw-boot {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+			body:has(.app, h1) #boot {
+				display: none;
+			}
+		</style>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<div id="boot" role="status">
+			<svg viewBox="0 0 64 40" aria-hidden="true">
+				<ellipse cx="32" cy="20" rx="30" ry="18" fill="#8b4a1f" stroke="#5a2e10" stroke-width="2" />
+				<path d="M12 8v24M52 8v24" stroke="#fff" stroke-width="3" />
+				<path d="M20 20h24M24 16v8M29 16v8M34 16v8M39 16v8" stroke="#fff" stroke-width="2" stroke-linecap="round" />
+			</svg>
+			Taking the field…
+		</div>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

@@ -137,6 +137,9 @@
 
 <style>
 	.weeks {
+		font-family: var(--display);
+		text-transform: uppercase;
+		font-size: 1.2rem;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -147,13 +150,19 @@
 		min-height: 44px;
 	}
 	.totals {
-		font-size: 1.2rem;
+		font-family: var(--display);
+		font-size: 1.6rem;
 		text-align: center;
+		background: #111;
+		color: var(--gold);
+		border-radius: 12px;
+		padding: 0.5rem;
 	}
 	.card {
-		background: #fff;
-		border: 1px solid #ddd;
-		border-radius: 12px;
+		background: var(--chalk);
+		border: 2px solid var(--line);
+		border-left: 6px solid var(--turf);
+		border-radius: 14px;
 		padding: 0.75rem;
 		margin-bottom: 0.75rem;
 	}
@@ -161,7 +170,7 @@
 		margin: 0.25rem 0;
 	}
 	.meta {
-		color: #666;
+		color: var(--muted);
 		font-size: 0.85rem;
 	}
 </style>

@@ -106,7 +106,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		min-height: 44px;
-		border-bottom: 1px solid #eee;
+		border-bottom: 2px dashed var(--line);
 	}
 	li a {
 		flex: 1;
@@ -120,7 +120,9 @@
 		min-height: 44px;
 	}
 	.sec {
-		background: #fff;
-		color: #1a5fd0;
+		background: var(--chalk);
+		border-color: var(--line);
+		box-shadow: 0 3px 0 var(--line);
+		color: var(--muted);
 	}
 </style>

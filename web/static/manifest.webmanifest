@@ -3,8 +3,8 @@
 	"short_name": "Wager",
 	"start_url": "/",
 	"display": "standalone",
-	"background_color": "#fafafa",
-	"theme_color": "#1a5fd0",
+	"background_color": "#14532d",
+	"theme_color": "#14532d",
 	"icons": [
 		{
 			"src": "/icon-192.png",

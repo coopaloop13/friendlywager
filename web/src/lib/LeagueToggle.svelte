@@ -10,8 +10,10 @@
 <style>
 	.toggle {
 		display: flex;
-		gap: 0.5rem;
 		margin-bottom: 1rem;
+		background: #111;
+		border-radius: 12px;
+		padding: 4px;
 	}
 	a {
 		flex: 1;
@@ -19,13 +21,14 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border: 1px solid #1a5fd0;
-		border-radius: 8px;
+		border-radius: 9px;
 		text-decoration: none;
-		color: #1a5fd0;
+		color: #bbb;
+		font-family: var(--display);
+		letter-spacing: 0.08em;
 	}
 	a[aria-current] {
-		background: #1a5fd0;
-		color: #fff;
+		background: var(--gold);
+		color: var(--ink);
 	}
 </style>

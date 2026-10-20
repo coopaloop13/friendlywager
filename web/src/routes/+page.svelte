@@ -55,11 +55,16 @@
 
 <style>
 	.sub {
-		color: #666;
+		color: var(--muted);
+		font-family: var(--display);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 	.out {
 		background: none;
-		color: #1a5fd0;
+		border: none;
+		box-shadow: none;
+		color: var(--red);
 		min-height: 44px;
 		margin-top: 1rem;
 	}
