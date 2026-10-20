@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 ARG INSTALL_DEV=0
+ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY pyproject.toml ./
 COPY app ./app
