@@ -13,6 +13,7 @@
 		type WeekView
 	} from '#lib/picks.js';
 	import LeagueToggle from '#lib/LeagueToggle.svelte';
+	import TeamMark from '#lib/TeamMark.svelte';
 
 	type MG = { game: GameView; mine: PickView | null; theirs: PickView | null; point: string | null };
 	type M = { games: MG[]; myPoints: number; theirPoints: number };
@@ -88,8 +89,14 @@
 		if (wk && wk.week + d >= 1) return loadWeek(league, { ...wk, week: wk.week + d }, friendId);
 	}
 
-	const pickText = (g: GameView, p: PickView) => `${g.awayAbbr} ${p.away} – ${g.homeAbbr} ${p.home}`;
 </script>
+
+{#snippet line(g: GameView, away: number, home: number)}
+	<TeamMark logo={g.awayLogo} abbr={g.awayAbbr} name={g.awayName} size={20} />
+	{away} –
+	<TeamMark logo={g.homeLogo} abbr={g.homeAbbr} name={g.homeName} size={20} />
+	{home}
+{/snippet}
 
 <p><a href="/friends">← Friends</a></p>
 <h1>Matchup</h1>
@@ -115,13 +122,13 @@
 				</header>
 				<p class="meta">
 					{fmtKickoff(g.game.kickoffAt)}
-					{#if g.game.homeScore !== null}· Final/live: {g.game.awayAbbr} {g.game.awayScore} – {g.game.homeAbbr} {g.game.homeScore}{/if}
+					{#if g.game.homeScore !== null && g.game.awayScore !== null}· Final/live: {@render line(g.game, g.game.awayScore, g.game.homeScore)}{/if}
 				</p>
-				<p>Me: {g.mine ? pickText(g.game, g.mine) : 'no pick'}</p>
+				<p>Me: {#if g.mine}{@render line(g.game, g.mine.away, g.mine.home)}{:else}no pick{/if}</p>
 				<p>
 					Them:
 					{#if !isLocked(g.game.kickoffAt, now)}<em>hidden until kickoff</em>
-					{:else if g.theirs}{pickText(g.game, g.theirs)}
+					{:else if g.theirs}{@render line(g.game, g.theirs.away, g.theirs.home)}
 					{:else}no pick{/if}
 				</p>
 				{#if g.point}<p class="meta">Point: {g.point}</p>{/if}

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { isLocked, lockedNow, saveAction, validatePick } from './picks';
+import { GAME_FIELDS, isLocked, lockedNow, saveAction, validatePick } from './picks';
 
 const kickoff = '2026-10-25T17:00:00Z';
 
@@ -30,4 +30,8 @@ it('saveAction: changed pick saves', () =>
 it('saveAction: both empty deletes only if saved', () => {
 	expect(saveAction('', '', { home: 1, away: 2 })).toEqual({ kind: 'delete' });
 	expect(saveAction('', '', null)).toEqual({ kind: 'none' });
+});
+
+it('requests team logos with every game', () => {
+	expect(GAME_FIELDS.split(' ')).toEqual(expect.arrayContaining(['homeLogo', 'awayLogo']));
 });

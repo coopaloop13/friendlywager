@@ -42,6 +42,12 @@ def test_parse_nfl_all_games():
     _, games = parse_scoreboard("nfl", p)
     assert len(games) == len(p["events"])
     assert games[0].home_abbr and games[0].kickoff_at.tzinfo
+    assert games[0].home_logo.startswith("https://") and games[0].away_logo.startswith("https://")
+
+
+def test_parse_missing_logo_is_none():
+    _, [g] = parse_scoreboard("nfl", payload(event()))
+    assert g.home_logo is None and g.away_logo is None
 
 
 def test_parse_unranked_is_none():

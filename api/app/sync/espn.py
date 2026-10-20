@@ -3,7 +3,7 @@
 Real field paths (verified against live payloads captured 2026-10-19), same as the brief:
   season: payload.season.year / payload.season.type (1 pre, 2 reg, 3 post, 4 off); week: payload.week.number
   event: id, date ("2026-10-20T00:15Z"), status.type.state/name,
-         competitions[0].competitors[].{homeAway, score, team.displayName, team.abbreviation, curatedRank.current}
+         competitions[0].competitors[].{homeAway, score, team.displayName, team.abbreviation, team.logo (optional), curatedRank.current}
          competitions[0].odds[0].details (optional)
   curatedRank.current is 99 for unranked teams. Offseason payloads may lack `week`.
 """
@@ -42,6 +42,8 @@ class GameData:
     home_abbr: str
     away_name: str
     away_abbr: str
+    home_logo: str | None
+    away_logo: str | None
     home_rank: int | None
     away_rank: int | None
     kickoff_at: datetime
@@ -81,6 +83,8 @@ def parse_scoreboard(league: str, payload: dict) -> tuple[WeekKey, list[GameData
                 home_abbr=side["home"]["team"]["abbreviation"],
                 away_name=side["away"]["team"]["displayName"],
                 away_abbr=side["away"]["team"]["abbreviation"],
+                home_logo=side["home"]["team"].get("logo"),
+                away_logo=side["away"]["team"].get("logo"),
                 home_rank=_rank(side["home"]),
                 away_rank=_rank(side["away"]),
                 kickoff_at=datetime.fromisoformat(e["date"]),

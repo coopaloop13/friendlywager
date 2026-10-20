@@ -23,6 +23,8 @@ export type GameView = {
 	homeAbbr: string;
 	awayName: string;
 	awayAbbr: string;
+	homeLogo: string | null;
+	awayLogo: string | null;
 	homeRank: number | null;
 	awayRank: number | null;
 	kickoffAt: string;
@@ -34,7 +36,7 @@ export type GameView = {
 };
 export type WeekView = { league: League; season: number; seasonType: number; week: number };
 
-export const GAME_FIELDS = `id homeName homeAbbr awayName awayAbbr homeRank awayRank kickoffAt status homeScore awayScore spread locked`;
+export const GAME_FIELDS = `id homeName homeAbbr awayName awayAbbr homeLogo awayLogo homeRank awayRank kickoffAt status homeScore awayScore spread locked`;
 
 export const leagueFrom = (search: { get(k: string): string | null }): League =>
 	search.get('league')?.toLowerCase() === 'cfb' ? 'CFB' : 'NFL';

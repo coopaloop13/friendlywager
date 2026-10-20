@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { gql, GqlError } from '#lib/gql.js';
+	import TeamMark from '#lib/TeamMark.svelte';
 	import { fmtKickoff, lockedNow, saveAction, teamLabel, type GameView, type PickView } from '#lib/picks.js';
 
 	let { game, pick }: { game: GameView; pick: PickView | null } = $props();
@@ -69,11 +70,11 @@
 	</header>
 	<div class="teams">
 		<div class="team">
-			<span>{teamLabel(game.awayName, game.awayRank)}</span>
+			<span class="name"><span aria-hidden="true"><TeamMark logo={game.awayLogo} abbr="" name={game.awayName} /></span>{teamLabel(game.awayName, game.awayRank)}</span>
 			{#if hasScore}<strong>{game.awayScore}</strong>{/if}
 		</div>
 		<div class="team">
-			<span>{teamLabel(game.homeName, game.homeRank)}</span>
+			<span class="name"><span aria-hidden="true"><TeamMark logo={game.homeLogo} abbr="" name={game.homeName} /></span>{teamLabel(game.homeName, game.homeRank)}</span>
 			{#if hasScore}<strong>{game.homeScore}</strong>{/if}
 		</div>
 	</div>
@@ -83,18 +84,23 @@
 	{#if locked}
 		<p class="pick">
 			Your pick:
-			{#if pick}{game.awayAbbr} {pick.away} – {game.homeAbbr} {pick.home}{:else}none{/if}
+			{#if pick}
+				<TeamMark logo={game.awayLogo} abbr={game.awayAbbr} name={game.awayName} size={22} />
+				{pick.away} –
+				<TeamMark logo={game.homeLogo} abbr={game.homeAbbr} name={game.homeName} size={22} />
+				{pick.home}
+			{:else}none{/if}
 		</p>
 	{:else}
 		<div class="inputs">
 			<label>
-				<span class="sr">{game.awayAbbr} score</span>
-				<span aria-hidden="true">{game.awayAbbr}</span>
+				<span class="sr">{game.awayName} score</span>
+				<span aria-hidden="true"><TeamMark logo={game.awayLogo} abbr={game.awayAbbr} name={game.awayName} size={34} /></span>
 				<input inputmode="numeric" pattern="[0-9]*" bind:value={away} onblur={save} />
 			</label>
 			<label>
-				<span class="sr">{game.homeAbbr} score</span>
-				<span aria-hidden="true">{game.homeAbbr}</span>
+				<span class="sr">{game.homeName} score</span>
+				<span aria-hidden="true"><TeamMark logo={game.homeLogo} abbr={game.homeAbbr} name={game.homeName} size={34} /></span>
 				<input inputmode="numeric" pattern="[0-9]*" bind:value={home} onblur={save} />
 			</label>
 		</div>
@@ -120,6 +126,11 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+	}
+	.name {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 	.teams {
 		margin: 0.4rem 0;
@@ -157,6 +168,9 @@
 		background: var(--red);
 	}
 	.pick {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
 		margin: 0.4rem 0 0;
 		font-weight: 600;
 	}

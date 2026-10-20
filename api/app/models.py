@@ -69,6 +69,8 @@ class Game(Base):
     home_abbr: Mapped[str] = mapped_column(String)
     away_name: Mapped[str] = mapped_column(String)
     away_abbr: Mapped[str] = mapped_column(String)
+    home_logo: Mapped[str | None] = mapped_column(String)
+    away_logo: Mapped[str | None] = mapped_column(String)
     home_rank: Mapped[int | None] = mapped_column(SmallInteger)
     away_rank: Mapped[int | None] = mapped_column(SmallInteger)
     kickoff_at: Mapped[datetime] = mapped_column(TS)
