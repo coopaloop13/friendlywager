@@ -52,6 +52,7 @@ API: Cloudflare Worker `fw-api` (`deploy/api-worker`, serves `api.sportspicks.cc
 5. `npx wrangler deploy` in `deploy/api-worker` (needs Docker running; builds the image with the Dockerfile default `INSTALL_DEV=0`). Allow a few minutes for container provisioning.
 6. Web: `cd web && npm run build && npx wrangler deploy` (use `docker compose run --rm --no-deps web sh -c "npm run build && npx wrangler deploy"` if host Node fails the engine check).
 7. Dry runs: `npx wrangler deploy --dry-run` in either directory.
+8. Rotating a secret (`wrangler secret put`): the running container keeps its old env until the image changes; it only picks up the new value on a new image rollout or after it idles out (10m with no requests, but the 15-min cron usually keeps it awake).
 
 ## Pointers
 
