@@ -5,6 +5,10 @@
 	import { GAME_FIELDS, leagueFrom, type GameView, type PickView, type WeekView } from '#lib/picks.js';
 	import GameCard from '#lib/GameCard.svelte';
 	import LeagueToggle from '#lib/LeagueToggle.svelte';
+	import Landing from '#lib/Landing.svelte';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
 
 	type W = (WeekView & { games: (GameView & { myPick: PickView | null })[] }) | null;
 
@@ -14,6 +18,7 @@
 	let error = $state('');
 
 	$effect(() => {
+		if (!data.user) return;
 		const l = league;
 		let stale = false;
 		loading = true;
@@ -32,26 +37,30 @@
 	async function logOut() {
 		await gql('mutation { logOut }');
 		await invalidateAll();
-		await goto('/login');
+		await goto('/');
 	}
 </script>
 
-<h1>This week</h1>
-<LeagueToggle {league} />
-{#if error}<p class="error" role="alert">{error}</p>{/if}
-{#if loading}
-	<p>Loading…</p>
-{:else if !week}
-	<p>No games loaded yet.</p>
+{#if !data.user}
+	<Landing />
 {:else}
-	<p class="sub">{week.league} {week.season} · week {week.week}</p>
-	{#each week.games as g (g.id)}
-		<GameCard game={g} pick={g.myPick} />
+	<h1>This week</h1>
+	<LeagueToggle {league} />
+	{#if error}<p class="error" role="alert">{error}</p>{/if}
+	{#if loading}
+		<p>Loading…</p>
+	{:else if !week}
+		<p>No games loaded yet.</p>
 	{:else}
-		<p>No games this week.</p>
-	{/each}
+		<p class="sub">{week.league} {week.season} · week {week.week}</p>
+		{#each week.games as g (g.id)}
+			<GameCard game={g} pick={g.myPick} />
+		{:else}
+			<p>No games this week.</p>
+		{/each}
+	{/if}
+	<button class="out" onclick={logOut}>Log out</button>
 {/if}
-<button class="out" onclick={logOut}>Log out</button>
 
 <style>
 	.sub {
