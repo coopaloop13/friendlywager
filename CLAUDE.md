@@ -32,6 +32,7 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 
 - TDD first: a failing test before any implementation.
 - SOLID: inject `Clock`, `ScoreboardClient`, `AsyncSession`; no concrete globals.
+- GraphQL: resolvers stay thin (args → one service call → GraphQL type). Each field returns only what its screen needs. Pages query only the fields they render, so responses stay small. Sibling fields share one `AsyncSession` and are serialized by `Context.db_lock` in `DomainErrors.resolve`; never run concurrent session work (e.g. `asyncio.gather`). Each page's exact query string gets a test.
 - ACID: integrity lives in Postgres constraints; multi-step writes use one transaction.
 
 ## Commands
