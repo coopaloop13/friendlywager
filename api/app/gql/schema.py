@@ -1,8 +1,9 @@
+import asyncio
 import enum
 import inspect
 import uuid
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import strawberry
 from fastapi import Depends, Request, Response
@@ -33,6 +34,8 @@ class Context(BaseContext):
     settings: Settings
     user_id: uuid.UUID | None
     response: Response
+    # sibling fields resolve concurrently, but one AsyncSession allows one operation at a time
+    db_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 def require_user(ctx: Context) -> uuid.UUID:
@@ -57,7 +60,10 @@ class DomainErrors(SchemaExtension):
     async def resolve(self, _next, root, info, *args, **kwargs):
         try:
             result = _next(root, info, *args, **kwargs)
-            return await result if inspect.isawaitable(result) else result
+            if not inspect.isawaitable(result):
+                return result
+            async with info.context.db_lock:
+                return await result
         except DomainError as e:
             raise GraphQLError(e.message, extensions={"code": e.code}) from e
 

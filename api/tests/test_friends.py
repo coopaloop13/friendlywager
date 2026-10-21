@@ -141,3 +141,12 @@ async def test_concurrent_send_race_is_conflict(client, session, monkeypatch):
 async def test_requires_login(client, query, vars):
     _, r = await gql(client, query, vars)
     assert code(r) == "UNAUTHENTICATED"
+
+
+async def test_friends_page_query_resolves_sibling_fields(client):
+    # web/src/routes/friends asks for both in one query; sibling resolvers share one AsyncSession
+    a, aid, b, bid = await two(client)
+    await gql(client, SEND, {"h": "maria"}, a)
+    _, r = await gql(client, "{ friends { id handle } pendingRequests { id from { id handle } } }", headers=b)
+    assert "errors" not in r, r
+    assert [x["from"]["handle"] for x in r["data"]["pendingRequests"]] == ["josh"]
