@@ -40,6 +40,6 @@ export default {
 				headers: { "X-Sync-Secret": env.SYNC_SECRET },
 			}),
 		);
-		if (!res.ok) throw new Error(`sync failed: ${res.status}`);
+		if (!res.ok) throw new Error(`sync failed: ${res.status} ${(await res.text()).slice(0, 500)}`);
 	},
 } satisfies ExportedHandler<Env>;
