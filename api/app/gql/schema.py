@@ -155,7 +155,8 @@ class MatchupGame:
     game: GameView
     mine: PickView | None
     theirs: PickView | None
-    point: str | None
+    my_points: int
+    their_points: int
 
 
 @strawberry.type
@@ -175,11 +176,9 @@ class HeadToHead:
 
 
 @strawberry.type
-class LeaderboardRow:
+class LeaderboardRow(HeadToHead):
     user_id: strawberry.ID
     handle: str
-    correct_winners: int
-    avg_closeness: float | None
 
 
 def _score_view(s) -> PickView | None:
@@ -266,7 +265,8 @@ class Query:
         for mg in m.games:
             gv = _to_game(mg.game, None, now)
             gv.my_pick = _score_view(mg.mine)
-            games.append(MatchupGame(game=gv, mine=gv.my_pick, theirs=_score_view(mg.theirs), point=mg.point))
+            games.append(MatchupGame(game=gv, mine=gv.my_pick, theirs=_score_view(mg.theirs),
+                                     my_points=mg.my_points, their_points=mg.their_points))
         return Matchup(games=games, my_points=m.my_points, their_points=m.their_points)
 
     @strawberry.field
@@ -280,12 +280,8 @@ class Query:
     @strawberry.field
     async def leaderboard(self, info: Info[Context, None], league: League, season: int) -> list[LeaderboardRow]:
         ctx = info.context
-        rows = await results.leaderboard(ctx.session, require_user(ctx), league.value, season)
-        return [
-            LeaderboardRow(user_id=strawberry.ID(str(r.user_id)), handle=r.handle,
-                           correct_winners=r.correct_winners, avg_closeness=r.avg_closeness)
-            for r in rows
-        ]
+        rows = await results.leaderboard(ctx.session, ctx.clock, require_user(ctx), league.value, season)
+        return [LeaderboardRow(**{**vars(r), "user_id": strawberry.ID(str(r.user_id))}) for r in rows]
 
 
 @strawberry.type

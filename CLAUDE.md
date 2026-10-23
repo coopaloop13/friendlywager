@@ -9,9 +9,9 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 - The spread **never** affects scoring. It is display-only text.
 - A pick can't be created, edited or deleted when `now >= game.kickoff_at` (server-enforced, UTC, timezone-aware).
 - A friend's pick, or whether one exists, is never returned before that game's kickoff, and never to a non-friend.
-- Scoring per game per pair: neither picked the actual winner → no point; only one did → 1 point to them (even if the other didn't pick); both did → lower closeness wins 1 point; equal closeness → push (no point). Closeness = `|pred_home − home| + |pred_away − away|`. Only `final` games score.
+- Scoring per game per pair, each player independently: 1 point for picking the actual winner; +1 for an exact score; +1 for lower closeness when both picked the winner (equal closeness → no bonus). Max 3. Closeness = `|pred_home − home| + |pred_away − away|`. Only `final` games score; a tied final scores nothing.
 - Week result per pair per league: more points wins; equal is a tie; a week where neither player picked any game in that league is not counted.
-- Head-to-head covers the whole season, including weeks before the friendship.
+- Head-to-head covers the whole season, including weeks before the friendship. The leaderboard is per opponent (your head-to-head record against each friend), never a global ranking.
 - Leagues are `nfl` and `cfb`, with separate weeks keyed by `(league, season, season_type, week)`.
 - Slate: all NFL games; CFB games where either team's AP rank is ≤ 25 at load time. Once loaded, a game is never removed.
 - Handles: stored lowercase, `^[a-z0-9_]{3,20}$`, unique. Emails stored lowercase, unique.

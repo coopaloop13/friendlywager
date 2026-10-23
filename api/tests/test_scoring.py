@@ -1,36 +1,50 @@
-from app.scoring import Score, closeness, game_point, picked_winner, week_result
+from app.scoring import Score, closeness, game_points, picked_winner, week_result
 
 actual = Score(24, 17)
 
 
 def test_neither_correct():
-    assert game_point(actual, Score(10, 20), Score(3, 14)) is None
+    assert game_points(actual, Score(10, 20), Score(3, 14)) == (0, 0)
 
 
 def test_only_a_correct():
-    assert game_point(actual, Score(21, 20), Score(10, 20)) == "a"
+    assert game_points(actual, Score(21, 20), Score(10, 20)) == (1, 0)
 
 
 def test_only_b_correct_a_no_pick():
-    assert game_point(actual, None, Score(30, 3)) == "b"
+    assert game_points(actual, None, Score(30, 3)) == (0, 1)
 
 
-def test_both_correct_closer_wins():
+def test_both_correct_closer_gets_bonus():
     # a: |27-24| + |17-17| = 3; b: |35-24| + |10-17| = 18
-    assert game_point(actual, Score(27, 17), Score(35, 10)) == "a"
+    assert game_points(actual, Score(27, 17), Score(35, 10)) == (2, 1)
+    assert game_points(actual, Score(35, 10), Score(27, 17)) == (1, 2)
 
 
-def test_both_correct_equal_is_push():
+def test_both_correct_equal_closeness_no_bonus():
     # a: 3; b: |21-24| + |17-17| = 3
-    assert game_point(actual, Score(27, 17), Score(21, 17)) is None
+    assert game_points(actual, Score(27, 17), Score(21, 17)) == (1, 1)
+
+
+def test_exact_score_bonus_without_opponent_winner():
+    assert game_points(actual, Score(24, 17), Score(10, 20)) == (2, 0)
+    assert game_points(actual, Score(24, 17), None) == (2, 0)
+
+
+def test_exact_score_with_both_correct_is_three():
+    assert game_points(actual, Score(24, 17), Score(27, 17)) == (3, 1)
+
+
+def test_both_exact():
+    assert game_points(actual, Score(24, 17), Score(24, 17)) == (2, 2)
 
 
 def test_neither_picked():
-    assert game_point(actual, None, None) is None
+    assert game_points(actual, None, None) == (0, 0)
 
 
 def test_actual_tie_scores_nothing():
-    assert game_point(Score(20, 20), Score(21, 20), Score(20, 21)) is None
+    assert game_points(Score(20, 20), Score(21, 20), Score(20, 20)) == (0, 0)
 
 
 def test_closeness():

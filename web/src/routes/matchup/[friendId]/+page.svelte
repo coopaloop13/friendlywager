@@ -15,7 +15,7 @@
 	import LeagueToggle from '#lib/LeagueToggle.svelte';
 	import TeamMark from '#lib/TeamMark.svelte';
 
-	type MG = { game: GameView; mine: PickView | null; theirs: PickView | null; point: string | null };
+	type MG = { game: GameView; mine: PickView | null; theirs: PickView | null; myPoints: number; theirPoints: number };
 	type M = { games: MG[]; myPoints: number; theirPoints: number };
 	type H = { pointsFor: number; pointsAgainst: number; weeksWon: number; weeksLost: number; weeksTied: number };
 
@@ -34,7 +34,7 @@
 
 	const MATCHUP = `query($f: ID!, $l: League!, $s: Int!, $t: Int!, $w: Int!) {
 		matchup(friendId: $f, league: $l, season: $s, seasonType: $t, week: $w) {
-			myPoints theirPoints games { mine { home away } theirs { home away } point game { ${GAME_FIELDS} } } } }`;
+			myPoints theirPoints games { mine { home away } theirs { home away } myPoints theirPoints game { ${GAME_FIELDS} } } } }`;
 
 	let token = 0; // only the latest request may apply its result
 
@@ -131,7 +131,7 @@
 					{:else if g.theirs}{@render line(g.game, g.theirs.away, g.theirs.home)}
 					{:else}no pick{/if}
 				</p>
-				{#if g.point}<p class="meta">Point: {g.point}</p>{/if}
+				{#if g.myPoints || g.theirPoints}<p class="meta">Points: You {g.myPoints} – {g.theirPoints} Them</p>{/if}
 			</article>
 		{/each}
 	{/if}

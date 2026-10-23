@@ -46,10 +46,12 @@ The first release is a mobile-first web app (SvelteKit, installable as a PWA) us
 - At a game's kickoff, each friend's pick for that game becomes visible (only to accepted friends). Before kickoff, a friend's pick is hidden, including whether they have picked at all. *(My call: hiding even the existence of a pick.)*
 
 ### Scoring (per game, per friend pair)
-Once a game is final:
-1. Neither player picked the actual winner (including not picking): **no point**.
-2. Exactly one player picked the actual winner: **that player gets 1 point**. This applies even if the other player made no pick.
-3. Both picked the actual winner: the player whose prediction is **closer** gets 1 point. Closeness = `|pred_home − actual_home| + |pred_away − actual_away|` *(my call: total error across both scores)*. Equal closeness = **push, no point**.
+Once a game is final, each player earns points independently *(decided by the user, 2026-10-23)*:
+1. **1 point** for picking the actual winner. This applies even if the other player made no pick.
+2. **+1 bonus** for an exact score, whether or not the other player picked the winner.
+3. **+1 bonus** for being **closer** than the other player when both picked the winner. Closeness = `|pred_home − actual_home| + |pred_away − actual_away|` *(my call: total error across both scores)*. Equal closeness = no bonus.
+
+So a game yields 0–0, 1–0, 2–0 (exact), 2–1 (both right, one closer), 1–1 (both right, equal), 3–1 (exact and closer) or 2–2 (both exact). A tied final scores nothing.
 
 Games that are cancelled or postponed out of the week score nothing. *(My call.)*
 
@@ -57,9 +59,9 @@ A pair's **week result** per league: whoever has more points that week wins the 
 
 Head-to-head covers the **whole season**, including weeks before the two users became friends, because those picks were made before kickoff. *(Decided by the user.)*
 
-### Leaderboard *(my call — not specified by the user)*
+### Leaderboard *(decided by the user, 2026-10-23: per opponent, not global)*
 - **Head-to-head, per friend:** season totals per league. These are points for vs. against, and weeks won/lost/tied.
-- **Season leaderboard:** you and all of your friends ranked by **correct-winner picks** for the season, with **average closeness on those picks** as the tiebreaker, per league. This ranks everyone on the same scale no matter how many friends each person has. Head-to-head points can't be compared across people with different friend lists, so they aren't used here.
+- **Season leaderboard:** one row per friend showing your head-to-head record against them for the season, per league. There is no global ranking, because the closer-than-opponent bonus only exists inside a pair. *(My call: rows sort by weeks won, then point differential, then handle.)*
 
 ### Friends and accounts
 - Sign up with email, password and a unique handle. *(My call: handles are 3–20 characters from `a-z 0-9 _`, unique ignoring case.)*

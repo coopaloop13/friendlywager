@@ -4,7 +4,10 @@
 	import { leagueFrom } from '#lib/picks.js';
 	import LeagueToggle from '#lib/LeagueToggle.svelte';
 
-	type Row = { userId: string; handle: string; correctWinners: number; avgCloseness: number | null };
+	type Row = {
+		userId: string; handle: string;
+		pointsFor: number; pointsAgainst: number; weeksWon: number; weeksLost: number; weeksTied: number;
+	};
 	const league = $derived(leagueFrom(page.url.searchParams));
 	let rows = $state<Row[] | null>(null); // null = no season data
 	let loading = $state(true);
@@ -23,7 +26,7 @@
 			.then(async ({ currentWeek }) => {
 				if (stale || !currentWeek) return;
 				const d = await gql<{ leaderboard: Row[] }>(
-					'query($l: League!, $s: Int!) { leaderboard(league: $l, season: $s) { userId handle correctWinners avgCloseness } }',
+					'query($l: League!, $s: Int!) { leaderboard(league: $l, season: $s) { userId handle pointsFor pointsAgainst weeksWon weeksLost weeksTied } }',
 					{ l, s: currentWeek.season }
 				);
 				if (!stale) rows = d.leaderboard;
@@ -42,17 +45,16 @@
 {:else if !rows}
 	<p>No games loaded yet.</p>
 {:else if !rows.length}
-	<p>No results yet.</p>
+	<p>Add friends to see your record against them.</p>
 {:else}
 	<table>
-		<thead><tr><th>#</th><th>Player</th><th>Winners</th><th>Avg closeness</th></tr></thead>
+		<thead><tr><th>vs</th><th>Weeks</th><th>Points</th></tr></thead>
 		<tbody>
-			{#each rows as r, i (r.userId)}
+			{#each rows as r (r.userId)}
 				<tr>
-					<td class="rank">{['🥇', '🥈', '🥉'][i] ?? i + 1}</td>
-					<td>@{r.handle}</td>
-					<td>{r.correctWinners}</td>
-					<td>{r.avgCloseness === null ? '–' : r.avgCloseness.toFixed(1)}</td>
+					<td><a href="/matchup/{r.userId}?league={league}">@{r.handle}</a></td>
+					<td>{r.weeksWon}W {r.weeksLost}L {r.weeksTied}T</td>
+					<td>{r.pointsFor}–{r.pointsAgainst}</td>
 				</tr>
 			{/each}
 		</tbody>
@@ -82,10 +84,5 @@
 		text-align: left;
 		padding: 0.6rem 0.5rem;
 		border-bottom: 1px solid var(--line);
-	}
-	.rank {
-		font-family: var(--display);
-		font-size: 1.1rem;
-		text-align: center;
 	}
 </style>

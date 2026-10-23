@@ -1,8 +1,6 @@
 # ponytail: computed on read; cache per-week results if leaderboard queries get slow
 import uuid
-from collections import defaultdict
 from dataclasses import dataclass
-from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +9,8 @@ from sqlalchemy.orm import aliased
 from app import friends
 from app.clock import Clock
 from app.errors import Forbidden
-from app.models import Game, Pick, User
-from app.scoring import Score, closeness, game_point, picked_winner, week_result
+from app.models import Game, Pick
+from app.scoring import Score, game_points, week_result
 from app.sync.espn import WeekKey
 
 
@@ -21,7 +19,8 @@ class MatchupGame:
     game: Game
     mine: Score | None
     theirs: Score | None
-    point: Literal["me", "them"] | None
+    my_points: int
+    their_points: int
 
 
 @dataclass
@@ -41,11 +40,9 @@ class HeadToHead:
 
 
 @dataclass
-class LeaderboardRow:
+class LeaderboardRow(HeadToHead):
     user_id: uuid.UUID
     handle: str
-    correct_winners: int
-    avg_closeness: float | None
 
 
 def _score(p: Pick | None) -> Score | None:
@@ -59,11 +56,9 @@ def _actual(g: Game) -> Score | None:
     return Score(g.home_score, g.away_score)
 
 
-def _point(g: Game, mine: Score | None, theirs: Score | None) -> Literal["me", "them"] | None:
+def _points(g: Game, mine: Score | None, theirs: Score | None) -> tuple[int, int]:
     actual = _actual(g)
-    if actual is None:
-        return None
-    return {"a": "me", "b": "them", None: None}[game_point(actual, mine, theirs)]
+    return game_points(actual, mine, theirs) if actual else (0, 0)
 
 
 async def _require_friend(session: AsyncSession, me: uuid.UUID, friend_id: uuid.UUID) -> None:
@@ -98,12 +93,8 @@ async def matchup(
     for g, pa, pb in rows:
         visible = now >= g.kickoff_at  # a friend's pick, or its existence, never shows before kickoff
         mine, theirs = _score(pa), (_score(pb) if visible else None)
-        games.append(MatchupGame(g, mine, theirs, _point(g, mine, theirs) if visible else None))
-    return Matchup(
-        games,
-        sum(mg.point == "me" for mg in games),
-        sum(mg.point == "them" for mg in games),
-    )
+        games.append(MatchupGame(g, mine, theirs, *(_points(g, mine, theirs) if visible else (0, 0))))
+    return Matchup(games, sum(mg.my_points for mg in games), sum(mg.their_points for mg in games))
 
 
 async def head_to_head(
@@ -119,33 +110,24 @@ async def head_to_head(
         wk = (g.season_type, g.week)
         if (pa or pb) and now >= g.kickoff_at:
             weeks.setdefault(wk, [0, 0])
-        point = _point(g, _score(pa), _score(pb))
-        pts_for += point == "me"
-        pts_against += point == "them"
-        if point and wk in weeks:
-            weeks[wk][point == "them"] += 1
+        mine, theirs = _points(g, _score(pa), _score(pb))
+        pts_for += mine
+        pts_against += theirs
+        if wk in weeks:
+            weeks[wk][0] += mine
+            weeks[wk][1] += theirs
     outcomes = [week_result(a, b) for a, b in weeks.values()]
     return HeadToHead(pts_for, pts_against, outcomes.count("a"), outcomes.count("b"), outcomes.count("tie"))
 
 
-async def leaderboard(session: AsyncSession, me: uuid.UUID, league: str, season: int) -> list[LeaderboardRow]:
-    users = [await session.get(User, me), *await friends.list_friends(session, me)]
-    q = (
-        select(Pick, Game)
-        .join(Game, Game.id == Pick.game_id)
-        .where(
-            Pick.user_id.in_([u.id for u in users]), Game.league == league, Game.season == season,
-            Game.status == "final",
-        )
-    )
-    correct: dict[uuid.UUID, list[int]] = defaultdict(list)
-    for p, g in (await session.execute(q)).all():
-        actual = _actual(g)
-        if actual and picked_winner(_score(p), actual):
-            correct[p.user_id].append(closeness(_score(p), actual))
+async def leaderboard(
+    session: AsyncSession, clock: Clock, me: uuid.UUID, league: str, season: int
+) -> list[LeaderboardRow]:
+    """My head-to-head record against each friend this season."""
+    # ponytail: one query per friend; batch into one if friend lists get long
     rows = [
-        LeaderboardRow(u.id, u.handle, len(correct[u.id]), sum(c) / len(c) if (c := correct[u.id]) else None)
-        for u in users
+        LeaderboardRow(**vars(await head_to_head(session, clock, me, u.id, league, season)), user_id=u.id, handle=u.handle)
+        for u in await friends.list_friends(session, me)
     ]
-    rows.sort(key=lambda r: (-r.correct_winners, r.avg_closeness is None, r.avg_closeness or 0, r.handle))
+    rows.sort(key=lambda r: (-r.weeks_won, r.points_against - r.points_for, r.handle))
     return rows

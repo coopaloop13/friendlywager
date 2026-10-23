@@ -18,23 +18,21 @@ def picked_winner(pred: Score, actual: Score) -> bool:
     return (pred.home - pred.away) * (actual.home - actual.away) > 0
 
 
-def game_point(
-    actual: Score, a: Score | None, b: Score | None
-) -> Literal["a", "b"] | None:
+def game_points(actual: Score, a: Score | None, b: Score | None) -> tuple[int, int]:
+    """Points (a, b) for one final game: 1 for the winner, +1 for an exact score,
+    +1 for being closer when both picked the winner."""
     if actual.home == actual.away:
-        return None
-    a_ok = a is not None and picked_winner(a, actual)
-    b_ok = b is not None and picked_winner(b, actual)
-    if a_ok and b_ok:
-        ca, cb = closeness(a, actual), closeness(b, actual)
-        if ca == cb:
-            return None
-        return "a" if ca < cb else "b"
-    if a_ok:
-        return "a"
-    if b_ok:
-        return "b"
-    return None
+        return 0, 0
+    ca = closeness(a, actual) if a is not None and picked_winner(a, actual) else None
+    cb = closeness(b, actual) if b is not None and picked_winner(b, actual) else None
+    pa = 0 if ca is None else 1 + (ca == 0)
+    pb = 0 if cb is None else 1 + (cb == 0)
+    if ca is not None and cb is not None and ca != cb:
+        if ca < cb:
+            pa += 1
+        else:
+            pb += 1
+    return pa, pb
 
 
 def week_result(a_points: int, b_points: int) -> Literal["a", "b", "tie"]:
