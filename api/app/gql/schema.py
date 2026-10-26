@@ -102,6 +102,8 @@ class GameView:
     away_logo: str | None
     home_rank: int | None
     away_rank: int | None
+    home_record: str | None
+    away_record: str | None
     kickoff_at: datetime
     status: str
     home_score: int | None
@@ -128,7 +130,7 @@ def _to_game(g: GameModel, p: PickModel | None, now: datetime) -> GameView:
     return GameView(
         id=strawberry.ID(str(g.id)), home_name=g.home_name, home_abbr=g.home_abbr,
         away_name=g.away_name, away_abbr=g.away_abbr, home_logo=g.home_logo, away_logo=g.away_logo,
-        home_rank=g.home_rank, away_rank=g.away_rank,
+        home_rank=g.home_rank, away_rank=g.away_rank, home_record=g.home_record, away_record=g.away_record,
         kickoff_at=g.kickoff_at, status=g.status, home_score=g.home_score, away_score=g.away_score,
         spread=g.spread_text, locked=picks.is_locked(g, now), my_pick=_to_pick(p),
     )

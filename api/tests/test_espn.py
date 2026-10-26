@@ -50,6 +50,13 @@ def test_parse_missing_logo_is_none():
     assert g.home_logo is None and g.away_logo is None
 
 
+def test_parse_overall_record():
+    _, games = parse_scoreboard("nfl", load("espn_nfl.json"))
+    assert games[0].home_record == "5-0" and games[0].away_record == "1-3-1"
+    _, [g] = parse_scoreboard("nfl", payload(event()))
+    assert g.home_record is None and g.away_record is None
+
+
 def test_parse_unranked_is_none():
     _, games = parse_scoreboard("cfb", load("espn_cfb.json"))
     assert any(g.home_rank is None and g.away_rank is None for g in games)

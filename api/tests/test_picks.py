@@ -16,7 +16,7 @@ SAVE = "mutation($g:ID!,$h:Int!,$a:Int!){savePick(gameId:$g,home:$h,away:$a){hom
 DELETE = "mutation($g:ID!){deletePick(gameId:$g)}"
 WEEK = """query($s:Int!){week(league:NFL,season:$s,seasonType:2,week:1){
   league season seasonType week
-  games{id homeName awayAbbr homeLogo awayLogo kickoffAt status spread locked myPick{home away}}}}"""
+  games{id homeName awayAbbr homeLogo awayLogo homeRecord awayRecord kickoffAt status spread locked myPick{home away}}}}"""
 CURRENT = "{ currentWeek(league:NFL){ season week games{ id } } }"
 
 
@@ -118,7 +118,7 @@ async def test_kickoff_moved_later_reopens(client, session, clock, now):
 async def test_week_view_shows_my_pick_and_spread(client, session, now):
     h, _ = await mkuser(client)
     h2, _ = await make_user(client, "maria")
-    g2 = await mkgame(session, now + timedelta(hours=5), ext="2", spread_text="HOM -3", home_logo="https://x/hom.png")
+    g2 = await mkgame(session, now + timedelta(hours=5), ext="2", spread_text="HOM -3", home_logo="https://x/hom.png", home_record="4-2")
     g1 = await mkgame(session, now - timedelta(hours=1), ext="1")
     await gql(client, SAVE, {"g": str(g2.id), "h": 24, "a": 17}, h)
     _, r = await gql(client, WEEK, {"s": 2026}, h)
@@ -128,6 +128,7 @@ async def test_week_view_shows_my_pick_and_spread(client, session, now):
     assert first["id"] == str(g1.id) and first["locked"] is True and first["myPick"] is None
     assert second["spread"] == "HOM -3" and second["locked"] is False
     assert (second["homeLogo"], second["awayLogo"]) == ("https://x/hom.png", None)
+    assert (second["homeRecord"], second["awayRecord"]) == ("4-2", None)
     assert second["myPick"] == {"home": 24, "away": 17}
     _, r2 = await gql(client, WEEK, {"s": 2026}, h2)
     assert r2["data"]["week"]["games"][1]["myPick"] is None

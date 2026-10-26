@@ -70,11 +70,11 @@
 	</header>
 	<div class="teams">
 		<div class="team">
-			<span class="name"><span aria-hidden="true"><TeamMark logo={game.awayLogo} abbr="" name={game.awayName} /></span>{teamLabel(game.awayName, game.awayRank)}</span>
+			<span class="name"><span aria-hidden="true"><TeamMark logo={game.awayLogo} abbr="" name={game.awayName} /></span>{teamLabel(game.awayName, game.awayRank)}{#if game.awayRecord}<small class="rec">({game.awayRecord})</small>{/if}</span>
 			{#if hasScore}<strong>{game.awayScore}</strong>{/if}
 		</div>
 		<div class="team">
-			<span class="name"><span aria-hidden="true"><TeamMark logo={game.homeLogo} abbr="" name={game.homeName} /></span>{teamLabel(game.homeName, game.homeRank)}</span>
+			<span class="name"><span aria-hidden="true"><TeamMark logo={game.homeLogo} abbr="" name={game.homeName} /></span>{teamLabel(game.homeName, game.homeRank)}{#if game.homeRecord}<small class="rec">({game.homeRecord})</small>{/if}</span>
 			{#if hasScore}<strong>{game.homeScore}</strong>{/if}
 		</div>
 	</div>
@@ -131,6 +131,12 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+	}
+	.rec {
+		color: var(--muted);
+		font-weight: 400;
+		font-size: 0.8rem;
+		margin-left: -0.2rem;
 	}
 	.teams {
 		margin: 0.4rem 0;

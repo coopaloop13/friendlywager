@@ -73,6 +73,8 @@ class Game(Base):
     away_logo: Mapped[str | None] = mapped_column(String)
     home_rank: Mapped[int | None] = mapped_column(SmallInteger)
     away_rank: Mapped[int | None] = mapped_column(SmallInteger)
+    home_record: Mapped[str | None] = mapped_column(String)
+    away_record: Mapped[str | None] = mapped_column(String)
     kickoff_at: Mapped[datetime] = mapped_column(TS)
     status: Mapped[str] = mapped_column(String)
     home_score: Mapped[int | None] = mapped_column(SmallInteger)

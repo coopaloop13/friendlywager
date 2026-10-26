@@ -3,7 +3,8 @@
 Real field paths (verified against live payloads captured 2026-10-19), same as the brief:
   season: payload.season.year / payload.season.type (1 pre, 2 reg, 3 post, 4 off); week: payload.week.number
   event: id, date ("2026-10-20T00:15Z"), status.type.state/name,
-         competitions[0].competitors[].{homeAway, score, team.displayName, team.abbreviation, team.logo (optional), curatedRank.current}
+         competitions[0].competitors[].{homeAway, score, team.displayName, team.abbreviation, team.logo (optional), curatedRank.current,
+                                        records[] (optional; type "total" summary is the overall record, e.g. "5-2" or "1-3-1")}
          competitions[0].odds[0].details (optional)
   curatedRank.current is 99 for unranked teams. Offseason payloads may lack `week`.
 """
@@ -46,6 +47,8 @@ class GameData:
     away_logo: str | None
     home_rank: int | None
     away_rank: int | None
+    home_record: str | None
+    away_record: str | None
     kickoff_at: datetime
     status: str
     home_score: int | None
@@ -56,6 +59,10 @@ class GameData:
 def _rank(c: dict) -> int | None:
     r = c.get("curatedRank", {}).get("current")
     return r if r is not None and r != 99 else None
+
+
+def _record(c: dict) -> str | None:
+    return next((r.get("summary") for r in c.get("records") or [] if r.get("type") == "total"), None)
 
 
 def parse_scoreboard(league: str, payload: dict) -> tuple[WeekKey, list[GameData]]:
@@ -87,6 +94,8 @@ def parse_scoreboard(league: str, payload: dict) -> tuple[WeekKey, list[GameData
                 away_logo=side["away"]["team"].get("logo"),
                 home_rank=_rank(side["home"]),
                 away_rank=_rank(side["away"]),
+                home_record=_record(side["home"]),
+                away_record=_record(side["away"]),
                 kickoff_at=datetime.fromisoformat(e["date"]),
                 status=status,
                 home_score=int(side["home"]["score"]) if scored else None,

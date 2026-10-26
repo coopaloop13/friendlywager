@@ -33,5 +33,5 @@ it('saveAction: both empty deletes only if saved', () => {
 });
 
 it('requests team logos with every game', () => {
-	expect(GAME_FIELDS.split(' ')).toEqual(expect.arrayContaining(['homeLogo', 'awayLogo']));
+	expect(GAME_FIELDS.split(' ')).toEqual(expect.arrayContaining(['homeLogo', 'awayLogo', 'homeRecord', 'awayRecord']));
 });
