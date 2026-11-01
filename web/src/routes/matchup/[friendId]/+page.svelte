@@ -124,8 +124,8 @@
 					{fmtKickoff(g.game.kickoffAt)}
 					{#if g.game.homeScore !== null && g.game.awayScore !== null}· Final/live: {@render line(g.game, g.game.awayScore, g.game.homeScore)}{/if}
 				</p>
-				<p>Me: {#if g.mine}{@render line(g.game, g.mine.away, g.mine.home)}{:else}no pick{/if}</p>
-				<p>
+				<p class="pick" class:win={g.myPoints > g.theirPoints}>Me: {#if g.mine}{@render line(g.game, g.mine.away, g.mine.home)}{:else}no pick{/if}</p>
+				<p class="pick" class:win={g.theirPoints > g.myPoints}>
 					Them:
 					{#if !isLocked(g.game.kickoffAt, now)}<em>hidden until kickoff</em>
 					{:else if g.theirs}{@render line(g.game, g.theirs.away, g.theirs.home)}
@@ -179,5 +179,25 @@
 	.meta {
 		color: var(--muted);
 		font-size: 0.85rem;
+	}
+	.pick {
+		padding: 0.25rem 0.5rem;
+		border-radius: 8px;
+		border: 2px solid transparent;
+	}
+	.win {
+		border-color: var(--gold);
+		background: color-mix(in srgb, var(--gold) 18%, transparent);
+	}
+	.win::after {
+		content: 'Winner';
+		float: right;
+		font-family: var(--display);
+		text-transform: uppercase;
+		font-size: 0.75rem;
+		background: var(--gold);
+		color: #111;
+		border-radius: 6px;
+		padding: 0 0.4rem;
 	}
 </style>
