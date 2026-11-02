@@ -22,6 +22,8 @@
 	const friendId = $derived(page.params.friendId ?? "");
 	const league = $derived(leagueFrom(page.url.searchParams));
 	let wk = $state<WeekView | null>(null);
+	let friend = $state('');
+	const me = $derived(page.data.user?.handle ?? '');
 	let m = $state<M | null>(null);
 	let h = $state<H | null>(null);
 	let now = $state(new Date());
@@ -69,12 +71,13 @@
 		wk = m = h = null;
 		error = '';
 		loading = true;
-		gql<{ currentWeek: WeekView | null }>(
-			'query($l: League!) { currentWeek(league: $l) { league season seasonType week } }',
+		gql<{ currentWeek: WeekView | null; friends: { id: string; handle: string }[] }>(
+			'query($l: League!) { currentWeek(league: $l) { league season seasonType week } friends { id handle } }',
 			{ l }
 		)
 			.then((d) => {
 				if (mine !== token) return;
+				friend = d.friends.find((u) => u.id === f)?.handle ?? '';
 				if (d.currentWeek) return loadWeek(l, d.currentWeek, f);
 				loading = false;
 			})
@@ -99,7 +102,7 @@
 {/snippet}
 
 <p><a href="/friends">← Friends</a></p>
-<h1>Matchup</h1>
+<h1>{#if friend}@{me} vs. @{friend} {/if}Matchup</h1>
 <LeagueToggle {league} />
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 

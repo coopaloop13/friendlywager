@@ -150,3 +150,18 @@ async def test_friends_page_query_resolves_sibling_fields(client):
     _, r = await gql(client, "{ friends { id handle } pendingRequests { id from { id handle } } }", headers=b)
     assert "errors" not in r, r
     assert [x["from"]["handle"] for x in r["data"]["pendingRequests"]] == ["josh"]
+
+
+async def test_matchup_page_query_resolves_sibling_fields(client):
+    # web/src/routes/matchup asks for the week and the friend list in one query (for the "a vs. b" heading)
+    a, aid, b, bid = await two(client)
+    await gql(client, SEND, {"h": "maria"}, a)
+    await gql(client, RESPOND, {"i": (await gql(client, PENDING, headers=b))[1]["data"]["pendingRequests"][0]["id"], "a": True}, b)
+    _, r = await gql(
+        client,
+        "query($l: League!) { currentWeek(league: $l) { league season seasonType week } friends { id handle } }",
+        {"l": "NFL"},
+        headers=a,
+    )
+    assert "errors" not in r, r
+    assert [f["handle"] for f in r["data"]["friends"]] == ["maria"]
