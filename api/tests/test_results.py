@@ -7,7 +7,7 @@ from sqlalchemy import select, update
 
 from app import results
 from app.errors import Forbidden
-from app.models import Friendship, Game, Pick, User
+from app.models import Friendship, Game, LeagueState, Pick, User
 from app.sync.espn import WeekKey
 from test_auth import code, gql
 from test_friends import RESPOND, SEND, make_user
@@ -318,3 +318,19 @@ async def test_season_stats_graphql_and_empty(client, now):
     a, _ = await make_user(client, "josh")
     _, r = await gql(client, STATS, headers=a)
     assert r["data"]["seasonStats"] == {"picked": 0, "winners": 0, "exact": 0}
+
+
+PAGE_CURRENT_WEEK = "query($l: League!) { currentWeek(league: $l) { season seasonType week } }"
+PAGE_BOARD = ("query($l: League!, $s: Int!) { leaderboard(league: $l, season: $s) { userId handle pointsFor pointsAgainst "
+              "weeksWon weeksLost weeksTied weeks { seasonType week pointsFor pointsAgainst } } "
+              "seasonStats(league: $l, season: $s) { picked winners exact } }")
+
+
+async def test_leaderboard_page_queries(client, session, now):
+    a, aid = await make_user(client, "josh")
+    session.add(LeagueState(league="nfl", season=2026, season_type=2, week=1))
+    await session.commit()
+    _, r = await gql(client, PAGE_CURRENT_WEEK, {"l": "NFL"}, a)
+    assert r["data"]["currentWeek"] == {"season": 2026, "seasonType": 2, "week": 1}
+    _, r = await gql(client, PAGE_BOARD, {"l": "NFL", "s": 2026}, a)
+    assert r["data"] == {"leaderboard": [], "seasonStats": {"picked": 0, "winners": 0, "exact": 0}}
