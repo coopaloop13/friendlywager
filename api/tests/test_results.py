@@ -19,8 +19,10 @@ _ext = count()
 MATCHUP = """query($f:ID!){matchup(friendId:$f,league:NFL,season:2026,seasonType:2,week:1){
   myPoints theirPoints games{ game{ id locked } mine{home away} theirs{home away} myPoints theirPoints }}}"""
 H2H = """query($f:ID!){headToHead(friendId:$f,league:NFL,season:2026){
-  pointsFor pointsAgainst weeksWon weeksLost weeksTied }}"""
-BOARD = "{ leaderboard(league:NFL,season:2026){ userId handle pointsFor pointsAgainst weeksWon weeksLost weeksTied } }"
+  pointsFor pointsAgainst weeksWon weeksLost weeksTied
+  weeks { seasonType week pointsFor pointsAgainst } }}"""
+BOARD = ("{ leaderboard(league:NFL,season:2026){ userId handle pointsFor pointsAgainst weeksWon weeksLost weeksTied "
+         "weeks { seasonType week pointsFor pointsAgainst } } }")
 
 
 @pytest.fixture
@@ -160,7 +162,8 @@ async def test_head_to_head_includes_weeks_before_friendship(session, clock, now
     await pick(session, me, g, 21, 10)
     await befriend(session, me, them, accepted_at=NOW)
     h = await results.head_to_head(session, clock, me, them, "nfl", 2026)
-    assert h == results.HeadToHead(points_for=1, points_against=0, weeks_won=1, weeks_lost=0, weeks_tied=0)
+    assert h == results.HeadToHead(points_for=1, points_against=0, weeks_won=1, weeks_lost=0, weeks_tied=0,
+                                   weeks=[results.WeekLine(2, 1, 1, 0)])
 
 
 async def test_head_to_head_skips_weeks_neither_picked(session, clock, pair):
@@ -175,18 +178,34 @@ async def test_head_to_head_skips_weeks_neither_picked(session, clock, pair):
     other = await mkgame(session, score=(20, 10), league="cfb")
     await pick(session, me, other, 21, 10)                        # other league ignored
     h = await results.head_to_head(session, clock, me, them, "nfl", 2026)
-    assert h == results.HeadToHead(points_for=1, points_against=1, weeks_won=1, weeks_lost=1, weeks_tied=1)
+    assert h == results.HeadToHead(points_for=1, points_against=1, weeks_won=1, weeks_lost=1, weeks_tied=1,
+                                   weeks=[results.WeekLine(2, 2, 0, 1), results.WeekLine(2, 3, 0, 0), results.WeekLine(3, 1, 1, 0)])
 
 
 async def test_head_to_head_ignores_picks_before_kickoff(session, clock, pair):
     me, them = pair
     g = await mkgame(session, kickoff=NOW + timedelta(days=3), week=5)
     await pick(session, them, g, 21, 10)  # friend picks Sunday's game on Thursday
-    empty = results.HeadToHead(points_for=0, points_against=0, weeks_won=0, weeks_lost=0, weeks_tied=0)
+    empty = results.HeadToHead(points_for=0, points_against=0, weeks_won=0, weeks_lost=0, weeks_tied=0, weeks=[])
     assert await results.head_to_head(session, clock, me, them, "nfl", 2026) == empty
     clock.dt = NOW + timedelta(days=3)
     h = await results.head_to_head(session, clock, me, them, "nfl", 2026)
-    assert h == results.HeadToHead(points_for=0, points_against=0, weeks_won=0, weeks_lost=0, weeks_tied=1)
+    assert h == results.HeadToHead(points_for=0, points_against=0, weeks_won=0, weeks_lost=0, weeks_tied=1,
+                                   weeks=[results.WeekLine(2, 5, 0, 0)])
+
+
+async def test_head_to_head_lists_counted_weeks_in_order(session, clock, pair):
+    me, them = pair
+    g3 = await mkgame(session, score=(20, 10), season_type=3, week=1)
+    await pick(session, me, g3, 21, 10)                           # postseason: me 1-0
+    g2 = await mkgame(session, score=(20, 10), week=2)
+    await pick(session, them, g2, 20, 10)                         # exact: them 0-2
+    g1 = await mkgame(session, kickoff=NOW - timedelta(hours=1), status="in_progress", week=1)
+    await pick(session, me, g1, 21, 10)                           # live, unscored: 0-0
+    await mkgame(session, score=(20, 10), week=4)                 # nobody picked: absent
+    h = await results.head_to_head(session, clock, me, them, "nfl", 2026)
+    assert h.weeks == [
+        results.WeekLine(2, 1, 0, 0), results.WeekLine(2, 2, 0, 2), results.WeekLine(3, 1, 1, 0)]
 
 
 async def test_head_to_head_tied_week(client, session, now):
@@ -198,7 +217,8 @@ async def test_head_to_head_tied_week(client, session, now):
     await pick(session, uuid.UUID(bid), g2, 10, 21)
     _, r = await gql(client, H2H, {"f": bid}, a)
     assert r["data"]["headToHead"] == {
-        "pointsFor": 1, "pointsAgainst": 1, "weeksWon": 0, "weeksLost": 0, "weeksTied": 1}
+        "pointsFor": 1, "pointsAgainst": 1, "weeksWon": 0, "weeksLost": 0, "weeksTied": 1,
+        "weeks": [{"seasonType": 2, "week": 1, "pointsFor": 1, "pointsAgainst": 1}]}
 
 
 async def test_leaderboard_is_per_opponent(client, session, now):
@@ -222,6 +242,7 @@ async def test_leaderboard_is_per_opponent(client, session, now):
             for x in rows] == [
         ("amy", 1, 0, 1, 0, 0), ("zed", 1, 0, 1, 0, 0), ("maria", 2, 2, 0, 0, 1), ("bob", 1, 3, 0, 1, 0)]
     assert rows[0]["userId"] == str(ids["amy"])
+    assert rows[0]["weeks"] == [{"seasonType": 2, "week": 1, "pointsFor": 1, "pointsAgainst": 0}]
 
 
 async def test_leaderboard_excludes_non_friends(session, clock, now):

@@ -30,6 +30,14 @@ class Matchup:
     their_points: int
 
 
+@dataclass(frozen=True)
+class WeekLine:
+    season_type: int
+    week: int
+    points_for: int
+    points_against: int
+
+
 @dataclass
 class HeadToHead:
     points_for: int
@@ -37,6 +45,7 @@ class HeadToHead:
     weeks_won: int
     weeks_lost: int
     weeks_tied: int
+    weeks: list[WeekLine]
 
 
 @dataclass
@@ -117,7 +126,8 @@ async def head_to_head(
             weeks[wk][0] += mine
             weeks[wk][1] += theirs
     outcomes = [week_result(a, b) for a, b in weeks.values()]
-    return HeadToHead(pts_for, pts_against, outcomes.count("a"), outcomes.count("b"), outcomes.count("tie"))
+    return HeadToHead(pts_for, pts_against, outcomes.count("a"), outcomes.count("b"), outcomes.count("tie"),
+                      [WeekLine(st, wk, a, b) for (st, wk), (a, b) in sorted(weeks.items())])
 
 
 async def leaderboard(

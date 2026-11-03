@@ -169,12 +169,21 @@ class Matchup:
 
 
 @strawberry.type
+class WeekLine:
+    season_type: int
+    week: int
+    points_for: int
+    points_against: int
+
+
+@strawberry.type
 class HeadToHead:
     points_for: int
     points_against: int
     weeks_won: int
     weeks_lost: int
     weeks_tied: int
+    weeks: list[WeekLine]
 
 
 @strawberry.type
@@ -185,6 +194,10 @@ class LeaderboardRow(HeadToHead):
 
 def _score_view(s) -> PickView | None:
     return PickView(home=s.home, away=s.away) if s else None
+
+
+def _h2h_fields(h: results.HeadToHead) -> dict:
+    return {**vars(h), "weeks": [WeekLine(**vars(w)) for w in h.weeks]}
 
 
 def _friend_id(value: strawberry.ID) -> uuid.UUID:
@@ -277,13 +290,13 @@ class Query:
     ) -> HeadToHead:
         ctx = info.context
         h = await results.head_to_head(ctx.session, ctx.clock, require_user(ctx), _friend_id(friend_id), league.value, season)
-        return HeadToHead(**vars(h))
+        return HeadToHead(**_h2h_fields(h))
 
     @strawberry.field
     async def leaderboard(self, info: Info[Context, None], league: League, season: int) -> list[LeaderboardRow]:
         ctx = info.context
         rows = await results.leaderboard(ctx.session, ctx.clock, require_user(ctx), league.value, season)
-        return [LeaderboardRow(**{**vars(r), "user_id": strawberry.ID(str(r.user_id))}) for r in rows]
+        return [LeaderboardRow(**{**_h2h_fields(r), "user_id": strawberry.ID(str(r.user_id))}) for r in rows]
 
 
 @strawberry.type
