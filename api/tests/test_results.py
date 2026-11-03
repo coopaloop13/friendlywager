@@ -290,3 +290,31 @@ async def test_matchup_graphql_hides_then_shows_friend_pick(client, session, clo
     assert m["games"][0]["theirs"] == {"home": 30, "away": 3}
     assert (m["games"][0]["myPoints"], m["games"][0]["theirPoints"]) == (2, 1)
     assert (m["myPoints"], m["theirPoints"]) == (2, 1)
+
+
+STATS = "{ seasonStats(league:NFL,season:2026){ picked winners exact } }"
+
+
+async def test_season_stats_count_final_games_only(session, clock, pair):
+    me, them = pair
+    exact = await mkgame(session, score=(20, 10))
+    await pick(session, me, exact, 20, 10)                        # winner + exact
+    close = await mkgame(session, score=(20, 10))
+    await pick(session, me, close, 21, 10)                        # winner
+    wrong = await mkgame(session, score=(20, 10))
+    await pick(session, me, wrong, 10, 20)                        # picked, wrong
+    tied = await mkgame(session, score=(10, 10))
+    await pick(session, me, tied, 10, 7)                          # picked, no winner to call
+    live = await mkgame(session, kickoff=NOW - timedelta(hours=1), status="in_progress")
+    await pick(session, me, live, 21, 10)                         # not final: ignored
+    other = await mkgame(session, score=(20, 10), league="cfb")
+    await pick(session, me, other, 20, 10)                        # other league: ignored
+    theirs = await mkgame(session, score=(20, 10))
+    await pick(session, them, theirs, 20, 10)                     # not my pick: ignored
+    assert await results.season_stats(session, me, "nfl", 2026) == results.SeasonStats(picked=4, winners=2, exact=1)
+
+
+async def test_season_stats_graphql_and_empty(client, now):
+    a, _ = await make_user(client, "josh")
+    _, r = await gql(client, STATS, headers=a)
+    assert r["data"]["seasonStats"] == {"picked": 0, "winners": 0, "exact": 0}

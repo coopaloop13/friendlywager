@@ -192,6 +192,13 @@ class LeaderboardRow(HeadToHead):
     handle: str
 
 
+@strawberry.type
+class SeasonStats:
+    picked: int
+    winners: int
+    exact: int
+
+
 def _score_view(s) -> PickView | None:
     return PickView(home=s.home, away=s.away) if s else None
 
@@ -297,6 +304,11 @@ class Query:
         ctx = info.context
         rows = await results.leaderboard(ctx.session, ctx.clock, require_user(ctx), league.value, season)
         return [LeaderboardRow(**{**_h2h_fields(r), "user_id": strawberry.ID(str(r.user_id))}) for r in rows]
+
+    @strawberry.field
+    async def season_stats(self, info: Info[Context, None], league: League, season: int) -> SeasonStats:
+        ctx = info.context
+        return SeasonStats(**vars(await results.season_stats(ctx.session, require_user(ctx), league.value, season)))
 
 
 @strawberry.type

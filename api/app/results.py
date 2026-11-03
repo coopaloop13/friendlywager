@@ -10,7 +10,7 @@ from app import friends
 from app.clock import Clock
 from app.errors import Forbidden
 from app.models import Game, Pick
-from app.scoring import Score, game_points, week_result
+from app.scoring import Score, closeness, game_points, picked_winner, week_result
 from app.sync.espn import WeekKey
 
 
@@ -141,3 +141,24 @@ async def leaderboard(
     ]
     rows.sort(key=lambda r: (-r.weeks_won, r.points_against - r.points_for, r.handle))
     return rows
+
+
+@dataclass(frozen=True)
+class SeasonStats:
+    picked: int
+    winners: int
+    exact: int
+
+
+async def season_stats(session: AsyncSession, me: uuid.UUID, league: str, season: int) -> SeasonStats:
+    """My own pick accuracy over final games; a final game has always kicked off, so no Clock."""
+    rows = (await session.execute(
+        select(Game, Pick).join(Pick, (Pick.game_id == Game.id) & (Pick.user_id == me))
+        .where(Game.league == league, Game.season == season, Game.status == "final")
+    )).all()
+    scored = [(_score(p), a) for g, p in rows if (a := _actual(g))]
+    return SeasonStats(
+        picked=len(scored),
+        winners=sum(picked_winner(s, a) for s, a in scored),
+        exact=sum(closeness(s, a) == 0 for s, a in scored),
+    )
