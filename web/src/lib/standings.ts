@@ -31,6 +31,9 @@ export function streak(weeks: WeekLine[]): string {
 export const thisWeek = (weeks: WeekLine[], cur: { seasonType: number; week: number }): WeekLine | undefined =>
 	weeks.find((w) => w.seasonType === cur.seasonType && w.week === cur.week);
 
+export const settled = (weeks: WeekLine[], cur: { seasonType: number; week: number } | null): WeekLine[] =>
+	cur ? weeks.filter((w) => !(w.seasonType === cur.seasonType && w.week === cur.week)) : weeks;
+
 export const weekLabel = (w: { seasonType: number; week: number }): string =>
 	`${w.seasonType === 3 ? 'P' : w.seasonType === 1 ? 'Pre' : 'W'}${w.week}`;
 

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { diff, lead, outcome, pct, sortRows, streak, summary, thisWeek, weekLabel, type Row, type WeekLine } from './standings';
+import { diff, lead, outcome, pct, settled, sortRows, streak, summary, thisWeek, weekLabel, type Row, type WeekLine } from './standings';
 
 const w = (seasonType: number, week: number, pointsFor: number, pointsAgainst: number): WeekLine =>
 	({ seasonType, week, pointsFor, pointsAgainst });
@@ -52,4 +52,26 @@ it('sortRows keeps server order for weeks and sorts by differential for points',
 it('pct rounds and is blank with nothing decided', () => {
 	expect(pct(0, 0)).toBe('');
 	expect(pct(2, 3)).toBe('67%');
+});
+
+it('settled drops the current week and keeps the rest in order', () => {
+	const weeks = [w(2, 7, 1, 0), w(2, 8, 0, 1), w(2, 9, 0, 0)];
+	expect(settled(weeks, { seasonType: 2, week: 8 })).toEqual([w(2, 7, 1, 0), w(2, 9, 0, 0)]);
+});
+
+it('settled returns everything with no cur or no match', () => {
+	const weeks = [w(2, 7, 1, 0), w(2, 8, 0, 1)];
+	expect(settled(weeks, null)).toEqual(weeks);
+	expect(settled(weeks, { seasonType: 3, week: 8 })).toEqual(weeks);
+});
+
+it('settled does not mutate its input', () => {
+	const weeks = [w(2, 7, 1, 0), w(2, 8, 0, 1)];
+	settled(weeks, { seasonType: 2, week: 8 });
+	expect(weeks).toEqual([w(2, 7, 1, 0), w(2, 8, 0, 1)]);
+});
+
+it('streak over settled weeks ignores the in-progress week', () => {
+	const weeks = [w(2, 6, 2, 1), w(2, 7, 3, 0), w(2, 8, 1, 0), w(2, 9, 0, 0)];
+	expect(streak(settled(weeks, { seasonType: 2, week: 9 }))).toBe('W3');
 });

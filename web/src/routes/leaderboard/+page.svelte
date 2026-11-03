@@ -10,6 +10,7 @@
 		lead,
 		outcome,
 		pct,
+		settled,
 		sortRows,
 		streak,
 		summary,
@@ -88,7 +89,8 @@
 		</div>
 		{#each shown as r (r.userId)}
 			{@const d = diff(r)}
-			{@const st = streak(r.weeks)}
+			{@const done = settled(r.weeks, cur)}
+			{@const st = streak(done)}
 			{@const w = thisWeek(r.weeks, cur)}
 			<details class="card" data-lead={lead(r)}>
 				<summary>
@@ -97,12 +99,12 @@
 					<span class:pos={d > 0} class:neg={d < 0}>{signed(d)}</span>
 					{#if st}<span class="chip">{st}</span>{/if}
 					<span class="this-week">
-						{#if w}{weekLabel(w)}: you {w.pointsFor} – {w.pointsAgainst} them{:else}{weekLabel(cur)}: not started{/if}
+						{#if w}{weekLabel(w)}: you {w.pointsFor} – {w.pointsAgainst} them{:else}{weekLabel(cur)}: no picks in play{/if}
 					</span>
 				</summary>
-				{#if r.weeks.length}
+				{#if done.length}
 					<ol class="weeks">
-						{#each r.weeks as wk (`${wk.seasonType}-${wk.week}`)}
+						{#each done as wk (`${wk.seasonType}-${wk.week}`)}
 							<li class={outcome(wk)}>{weekLabel(wk)} {outcome(wk)} {wk.pointsFor}–{wk.pointsAgainst}</li>
 						{/each}
 					</ol>
