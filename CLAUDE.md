@@ -44,7 +44,7 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 
 ## Deploy
 
-API: Cloudflare Worker `fw-api` (`deploy/api-worker`, serves `api.sportspicks.cc`) fronting a container built from `api/Dockerfile`; a 15-minute cron calls `/internal/sync`. Web: Cloudflare Worker `fw-web` with static assets (`web/`, serves `sportspicks.cc`, `API_URL=https://api.sportspicks.cc`). Domain `sportspicks.cc` lives on the user's Cloudflare account.
+API: Cloudflare Worker `fw-api` (`deploy/api-worker`, serves `api.sportspicks.cc`) fronting a container built from `api/Dockerfile`; a 5-minute cron calls `/internal/sync` (also keeps the container and the Neon compute from sleeping; a container cold start is ~2 minutes of 500s). Web: Cloudflare Worker `fw-web` with static assets (`web/`, serves `sportspicks.cc`, `API_URL=https://api.sportspicks.cc`). Domain `sportspicks.cc` lives on the user's Cloudflare account.
 
 1. Confirm `npx wrangler whoami` shows the intended Cloudflare account (see your notes; never commit emails or account_id).
 2. Create a Neon database. `DATABASE_URL` must be `postgresql+asyncpg://USER:PASS@HOST/DB?ssl=require` (asyncpg scheme, TLS required).
