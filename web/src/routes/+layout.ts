@@ -6,11 +6,14 @@ export const ssr = false;
 
 export type User = { id: string; handle: string };
 
-export const load: LayoutLoad = async ({ fetch, url }) => {
+export const load: LayoutLoad = async ({ fetch, url, untrack }) => {
 	// quiet: preloads run this too, and an overlay mid-tap would swallow the click. Real navigations show via navigating.to.
 	const { me } = await gql<{ me: User | null }>('{ me { id handle } }', undefined, fetch, { quiet: true });
-	const isAuthPage = url.pathname === '/login' || url.pathname === '/signup';
-	if (!me && !isAuthPage && url.pathname !== '/') redirect(307, '/');
+	// untracked: otherwise every tab switch reruns this load and refetches `me` before the page can swap.
+	// Log in/out call invalidateAll(), which reruns it with the current url.
+	const path = untrack(() => url.pathname);
+	const isAuthPage = path === '/login' || path === '/signup';
+	if (!me && !isAuthPage && path !== '/') redirect(307, '/');
 	if (me && isAuthPage) redirect(307, '/');
 	return { user: me };
 };

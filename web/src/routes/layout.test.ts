@@ -1,9 +1,9 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { load } from './+layout';
 
 const as = (me: unknown) => () => Promise.resolve(Response.json({ data: { me } }));
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const run = (path: string, me: unknown) => (load as any)({ fetch: as(me), url: new URL(path, 'http://x') });
+const run = (path: string, me: unknown) => (load as any)({ fetch: as(me), url: new URL(path, 'http://x'), untrack: (f: () => unknown) => f() });
 const target = (p: Promise<unknown>) => p.then(() => null, (r) => r.location);
 
 it('sends logged-out visitors to the landing page at root', async () => {
@@ -24,8 +24,16 @@ it('does not drive the loading overlay (tap preload would block the click)', asy
 	let done!: (r: Response) => void;
 	const slow = () => new Promise<Response>((r) => (done = r));
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const p = (load as any)({ fetch: slow, url: new URL('/', 'http://x') });
+	const p = (load as any)({ fetch: slow, url: new URL('/', 'http://x'), untrack: (f: () => unknown) => f() });
 	expect(get(pending)).toBe(0);
 	done(Response.json({ data: { me: null } }));
 	await p;
+});
+
+it('reads the url without tracking it, so tab switches do not refetch me', async () => {
+	const untrack = vi.fn((f: () => unknown) => f());
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const p = (load as any)({ fetch: as({ id: '1', handle: 'a' }), url: new URL('/login', 'http://x'), untrack });
+	expect(await target(p)).toBe('/');
+	expect(untrack).toHaveBeenCalled();
 });
