@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { gql } from '#lib/gql.js';
+	import { cached, gql, remember } from '#lib/gql.js';
 	import { leagueFrom } from '#lib/picks.js';
 	import LeagueToggle from '#lib/LeagueToggle.svelte';
 	import {
@@ -35,23 +35,30 @@
 
 	$effect(() => {
 		const l = league;
+		const key = `board:${page.data.user?.id}:${l}`;
 		let stale = false;
-		loading = true;
-		rows = null;
-		stats = null;
-		cur = null;
+		// show the last copy at once (finished weeks never change), refresh quietly
+		const hit = cached<{ rows: Row[]; stats: Stats; cur: Week }>(key);
+		rows = hit?.rows ?? null;
+		stats = hit?.stats ?? null;
+		cur = hit?.cur ?? null;
+		loading = !hit;
 		error = '';
-		gql<{ currentWeek: ({ season: number } & Week) | null }>(CURRENT_WEEK_QUERY, { l })
+		const quiet = !!hit;
+		gql<{ currentWeek: ({ season: number } & Week) | null }>(CURRENT_WEEK_QUERY, { l }, fetch, { quiet })
 			.then(async ({ currentWeek }) => {
 				if (stale || !currentWeek) return;
-				const d = await gql<{ leaderboard: Row[]; seasonStats: Stats }>(BOARD_QUERY, {
-					l,
-					s: currentWeek.season
-				});
+				const d = await gql<{ leaderboard: Row[]; seasonStats: Stats }>(
+					BOARD_QUERY,
+					{ l, s: currentWeek.season },
+					fetch,
+					{ quiet }
+				);
 				if (stale) return;
 				rows = d.leaderboard;
 				stats = d.seasonStats;
 				cur = currentWeek;
+				remember(key, { rows, stats, cur });
 			})
 			.catch((e) => stale || (error = e.message))
 			.finally(() => stale || (loading = false));

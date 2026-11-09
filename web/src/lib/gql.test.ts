@@ -23,3 +23,20 @@ it('counts in-flight requests in `pending`, except quiet ones', async () => {
 	done(Response.json({ data: {} }));
 	await q;
 });
+
+it('remembers the last response per key and tolerates unusable storage', async () => {
+	const { cached, remember } = await import('./gql');
+	const store = new Map<string, string>();
+	vi.stubGlobal('localStorage', {
+		getItem: (k: string) => store.get(k) ?? null,
+		setItem: (k: string, v: string) => void store.set(k, v)
+	});
+	expect(cached('board:1:nfl')).toBeNull();
+	remember('board:1:nfl', { rows: [1] });
+	expect(cached('board:1:nfl')).toEqual({ rows: [1] });
+	const deny = () => { throw new Error('denied'); };
+	vi.stubGlobal('localStorage', { getItem: deny, setItem: deny });
+	expect(() => remember('x', 1)).not.toThrow();
+	expect(cached('board:1:nfl')).toBeNull();
+	vi.unstubAllGlobals();
+});

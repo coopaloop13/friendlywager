@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { gql } from '#lib/gql.js';
+	import { cached, gql, remember } from '#lib/gql.js';
 	import { GAME_FIELDS, leagueFrom, type GameView, type PickView, type WeekView } from '#lib/picks.js';
 	import GameCard from '#lib/GameCard.svelte';
 	import LeagueToggle from '#lib/LeagueToggle.svelte';
@@ -20,15 +20,23 @@
 	$effect(() => {
 		if (!data.user) return;
 		const l = league;
+		const key = `week:${data.user.id}:${l}`;
 		let stale = false;
-		loading = true;
-		week = null;
+		// show the last copy at once (finished games never change), refresh quietly
+		week = cached<W>(key);
+		loading = !week;
 		error = '';
 		gql<{ currentWeek: W }>(
 			`query($l: League!) { currentWeek(league: $l) { league season seasonType week games { ${GAME_FIELDS} myPick { home away } } } }`,
-			{ l }
+			{ l },
+			fetch,
+			{ quiet: !!week }
 		)
-			.then((d) => stale || (week = d.currentWeek))
+			.then((d) => {
+				if (stale) return;
+				week = d.currentWeek;
+				remember(key, week);
+			})
 			.catch((e) => stale || (error = e.message))
 			.finally(() => stale || (loading = false));
 		return () => (stale = true);

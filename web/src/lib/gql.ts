@@ -40,3 +40,21 @@ export async function gql<T>(
 		if (!quiet) pending.update((n) => n - 1);
 	}
 }
+
+/** Last good response for a key: pages render it at once and refresh quietly. Storage is optional. */
+export function cached<T>(key: string): T | null {
+	try {
+		const v = localStorage.getItem(`fw:${key}`);
+		return v ? (JSON.parse(v) as T) : null;
+	} catch {
+		return null;
+	}
+}
+
+export function remember(key: string, value: unknown) {
+	try {
+		localStorage.setItem(`fw:${key}`, JSON.stringify(value));
+	} catch {
+		// private mode or full: the next load is just slower
+	}
+}
