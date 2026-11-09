@@ -58,7 +58,7 @@
 				rows = d.leaderboard;
 				stats = d.seasonStats;
 				cur = currentWeek;
-				remember(key, { rows, stats, cur });
+				remember(key, { rows: d.leaderboard, stats: d.seasonStats, cur: currentWeek });
 			})
 			.catch((e) => stale || (error = e.message))
 			.finally(() => stale || (loading = false));

@@ -22,15 +22,17 @@
 		const l = league;
 		const key = `week:${data.user.id}:${l}`;
 		let stale = false;
-		// show the last copy at once (finished games never change), refresh quietly
-		week = cached<W>(key);
-		loading = !week;
+		// show the last copy at once (finished games never change), refresh quietly.
+		// `hit` stays local: reading `week` here would make the effect depend on what it writes.
+		const hit = cached<W>(key);
+		week = hit;
+		loading = !hit;
 		error = '';
 		gql<{ currentWeek: W }>(
 			`query($l: League!) { currentWeek(league: $l) { league season seasonType week games { ${GAME_FIELDS} myPick { home away } } } }`,
 			{ l },
 			fetch,
-			{ quiet: !!week }
+			{ quiet: !!hit }
 		)
 			.then((d) => {
 				if (stale) return;
@@ -61,7 +63,8 @@
 		<p>No games loaded yet.</p>
 	{:else}
 		<p class="sub">{week.league} {week.season} · week {week.week}</p>
-		{#each week.games as g (g.id)}
+		<!-- keyed on the pick too: a card from the cached copy is rebuilt when the refresh brings a different pick -->
+		{#each week.games as g (`${g.id}:${g.myPick?.home}:${g.myPick?.away}`)}
 			<GameCard game={g} pick={g.myPick} />
 		{:else}
 			<p>No games this week.</p>
