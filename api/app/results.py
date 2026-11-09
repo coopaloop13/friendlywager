@@ -1,6 +1,7 @@
 # ponytail: computed on read; cache per-week results if leaderboard queries get slow
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,7 +112,11 @@ async def head_to_head(
 ) -> HeadToHead:
     await _require_friend(session, me, friend_id)
     rows = await _pair_rows(session, me, friend_id, Game.league == league, Game.season == season)
-    now = clock.now()
+    return _tally(rows, clock.now())
+
+
+def _tally(rows, now: datetime) -> HeadToHead:
+    """Season record from (game, my pick, their pick) rows."""
     # only weeks where someone picked a game that has kicked off; earlier picks must not leak
     weeks: dict[tuple[int, int], list[int]] = {}
     pts_for = pts_against = 0
@@ -134,10 +139,21 @@ async def leaderboard(
     session: AsyncSession, clock: Clock, me: uuid.UUID, league: str, season: int
 ) -> list[LeaderboardRow]:
     """My head-to-head record against each friend this season."""
-    # ponytail: one query per friend; batch into one if friend lists get long
+    people = await friends.list_friends(session, me)
+    # three queries however many friends: the season's games with my pick, then every friend's pick at once
+    pa = aliased(Pick)
+    games = (await session.execute(
+        select(Game, pa).outerjoin(pa, (pa.game_id == Game.id) & (pa.user_id == me))
+        .where(Game.league == league, Game.season == season).order_by(Game.kickoff_at, Game.id)
+    )).all()
+    theirs = {(p.user_id, p.game_id): p for p in await session.scalars(
+        select(Pick).join(Game, Pick.game_id == Game.id)
+        .where(Pick.user_id.in_([u.id for u in people]), Game.league == league, Game.season == season)
+    )}
+    now = clock.now()
     rows = [
-        LeaderboardRow(**vars(await head_to_head(session, clock, me, u.id, league, season)), user_id=u.id, handle=u.handle)
-        for u in await friends.list_friends(session, me)
+        LeaderboardRow(**vars(_tally([(g, p, theirs.get((u.id, g.id))) for g, p in games], now)), user_id=u.id, handle=u.handle)
+        for u in people
     ]
     rows.sort(key=lambda r: (-r.weeks_won, r.points_against - r.points_for, r.handle))
     return rows

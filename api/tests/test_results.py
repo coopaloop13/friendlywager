@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from itertools import count
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import event, select, update
 
 from app import results
 from app.errors import Forbidden
@@ -334,3 +334,16 @@ async def test_leaderboard_page_queries(client, session, now):
     assert r["data"]["currentWeek"] == {"season": 2026, "seasonType": 2, "week": 1}
     _, r = await gql(client, PAGE_BOARD, {"l": "NFL", "s": 2026}, a)
     assert r["data"] == {"leaderboard": [], "seasonStats": {"picked": 0, "winners": 0, "exact": 0}}
+
+
+async def test_leaderboard_query_count_does_not_grow_with_friends(session, clock, now):
+    me = await mkuser(session, "josh")
+    for h in ("maria", "bob", "zed", "amy"):
+        f = await mkuser(session, h)
+        await befriend(session, me, f)
+        await pick(session, f, await mkgame(session, score=(20, 10)), 20, 10)
+    statements: list[str] = []
+    event.listen(session.bind.sync_engine, "before_cursor_execute", lambda *a: statements.append(a[2]))
+    await results.leaderboard(session, clock, me, "nfl", 2026)
+    # friends, games with my picks, friends' picks — never one round trip per friend
+    assert len(statements) == 3, statements
