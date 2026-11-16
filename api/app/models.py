@@ -61,6 +61,18 @@ class Friendship(Base):
     accepted_at: Mapped[datetime | None] = mapped_column(TS)
 
 
+class Block(Base):
+    """blocker never hears from blocked again: their friend requests are dropped without telling them."""
+
+    __tablename__ = "blocks"
+    __table_args__ = (CheckConstraint("blocker_id <> blocked_id", name="ck_blocks_not_self"),)
+    blocker_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    blocked_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
 class Game(Base):
     __tablename__ = "games"
     __table_args__ = (

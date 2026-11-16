@@ -32,8 +32,25 @@ export class Api extends Container<Env> {
 // One named instance serves everything (single SQL-backed app, ~friends scale).
 const api = (env: Env) => getContainer(env.API, "main");
 
+const tooMany = () =>
+	Response.json(
+		{ errors: [{ message: "Too many requests. Give it a minute.", extensions: { code: "RATE_LIMITED" } }] },
+		{ status: 429 },
+	);
+
 export default {
-	fetch: (req: Request, env: Env) => api(env).fetch(req),
+	async fetch(req: Request, env: Env) {
+		if (new URL(req.url).pathname === "/graphql" && req.method === "POST") {
+			// Direct callers get their real IP here; the web proxy passes the visitor's (see web/src/routes/graphql).
+			const key = req.headers.get("cf-connecting-ip") ?? "unknown";
+			if (!(await env.GQL_LIMIT.limit({ key })).success) return tooMany();
+			// Each code request sends an email, so it gets a much smaller budget. A field name can't be
+			// escaped in GraphQL, so the substring is enough; the API caps the body at 16 KB.
+			const asksForCode = (await req.clone().text()).includes("requestLoginCode");
+			if (asksForCode && !(await env.CODE_LIMIT.limit({ key })).success) return tooMany();
+		}
+		return api(env).fetch(req);
+	},
 
 	async scheduled(_c: ScheduledController, env: Env) {
 		const res = await api(env).fetch(

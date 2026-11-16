@@ -16,6 +16,9 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 - Slate: all NFL games; CFB games where either team's AP rank is ≤ 25 at load time. Once loaded, a game is never removed.
 - Handles: stored lowercase, `^[a-z0-9_]{3,20}$`, unique. Emails stored lowercase, unique.
 - Sign-in is by a 6-digit code emailed to the address (10 minutes, 5 attempts, one live code per email, stored hashed). A new email picks a handle with the same code. No passwords, no invite code.
+- Blocking a user removes any friendship or request between the two and silently drops that user's later requests; they are never told. Sending a request to someone you blocked unblocks them.
+- At most 20 unanswered sent friend requests per user; the sender can cancel one. Handles on a short reserved/offensive list are refused at sign-up and rename.
+- Abuse limits: the `fw-api` Worker allows 120 `/graphql` requests and 5 sign-in code requests per client IP per minute (429, code `RATE_LIMITED`); the web proxy passes the visitor's IP as `x-real-ip`. The API refuses bodies over 16 KB and more than 10 aliases, and has no introspection in production.
 - Deleting an account removes the user, their picks and their friendships for good; their friends lose that history too.
 - Auth cookie `fw_session`: HttpOnly, SameSite=Lax, Secure when `COOKIE_SECURE=true`. The same JWT is accepted as `Authorization: Bearer <token>`.
 - Development principles: **TDD** (a failing test first in every task), **SOLID** (services depend on injected `Clock`, `ScoreboardClient`, `EmailSender`, and `AsyncSession`, never on concrete globals), **ACID** (integrity in Postgres constraints; every multi-step write in one transaction).
@@ -52,7 +55,7 @@ API: Cloudflare Worker `fw-api` (`deploy/api-worker`, serves `api.sportspicks.cc
 3. Migrations: none to run by hand. The container runs `alembic upgrade head` on every start (optional manual run: `DATABASE_URL=... alembic upgrade head` from `api/`).
 4. In `deploy/api-worker`, `npm i`, then `npx wrangler secret put` for each of `DATABASE_URL`, `SESSION_SECRET` (>=32 chars), `SYNC_SECRET` (>=16 chars), `EMAIL_API_TOKEN` (Cloudflare API token with Email Sending permission) and `CLOUDFLARE_ACCOUNT_ID`. Sign-in codes are sent from `signin@sportspicks.cc` through Cloudflare Email Service (`npx wrangler email sending enable sportspicks.cc`); without the two email secrets the code is only written to the container log and nobody can sign in. Generate SESSION_SECRET and SYNC_SECRET with `openssl rand -base64 48`. The first `secret put` before the first deploy will offer to create the Worker; accept.
 5. `npx wrangler deploy` in `deploy/api-worker` (needs Docker running; builds the image with the Dockerfile default `INSTALL_DEV=0`). Allow a few minutes for container provisioning.
-6. Web: `cd web && npm run build && npx wrangler deploy` (use `docker compose run --rm --no-deps web sh -c "npm run build && npx wrangler deploy"` if host Node fails the engine check).
+6. Web: `cd web && npm run build && npx wrangler deploy`. If host Node fails the engine check, build in Docker (`docker compose run --rm --no-deps web npm run build`) and run `npx wrangler deploy` from `web/` on the host; the container has no Cloudflare login.
 7. Dry runs: `npx wrangler deploy --dry-run` in either directory.
 8. Rotating a secret (`wrangler secret put`): the running container keeps its old env until the image changes; it only picks up the new value on a new image rollout or after it idles out (10m with no requests, but the 5-minute cron usually keeps it awake).
 

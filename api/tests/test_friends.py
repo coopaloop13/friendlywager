@@ -125,7 +125,7 @@ async def test_concurrent_send_race_is_conflict(client, session, monkeypatch):
     monkeypatch.setattr(session, "scalar", blind)
     _, r = await gql(client, SEND, {"h": "maria"}, a)
     assert code(r) == "CONFLICT"
-    assert len(calls) == 2
+    assert len(calls) == 3  # user lookup, the blinded pre-check, the pending-request count
 
 
 @pytest.mark.parametrize(
@@ -147,7 +147,7 @@ async def test_friends_page_query_resolves_sibling_fields(client):
     # web/src/routes/friends asks for both in one query; sibling resolvers share one AsyncSession
     a, aid, b, bid = await two(client)
     await gql(client, SEND, {"h": "maria"}, a)
-    _, r = await gql(client, "{ friends { id handle } pendingRequests { id from { id handle } } }", headers=b)
+    _, r = await gql(client, "{ friends { id handle } pendingRequests { id from { id handle } } sentRequests { id to { id handle } } }", headers=b)
     assert "errors" not in r, r
     assert [x["from"]["handle"] for x in r["data"]["pendingRequests"]] == ["josh"]
 

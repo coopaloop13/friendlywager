@@ -16,7 +16,7 @@ from app.main import create_app
 
 TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
 TEST_SECRET = "test-secret-0123456789-0123456789-abcdef"
-TABLES = "users, friendships, games, picks, league_state, login_codes"
+TABLES = "users, friendships, games, picks, league_state, login_codes, blocks"
 
 
 class FixedClock:

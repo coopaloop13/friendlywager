@@ -4,16 +4,18 @@
 	type U = { id: string; handle: string };
 	let friends = $state<U[]>([]);
 	let requests = $state<{ id: string; from: U }[]>([]);
+	let sent = $state<{ id: string; to: U }[]>([]);
 	let handle = $state('');
 	let error = $state('');
 	let info = $state('');
 
 	async function load() {
-		const d = await gql<{ friends: U[]; pendingRequests: typeof requests }>(
-			'{ friends { id handle } pendingRequests { id from { id handle } } }'
+		const d = await gql<{ friends: U[]; pendingRequests: typeof requests; sentRequests: typeof sent }>(
+			'{ friends { id handle } pendingRequests { id from { id handle } } sentRequests { id to { id handle } } }'
 		);
 		friends = d.friends;
 		requests = d.pendingRequests;
+		sent = d.sentRequests;
 	}
 
 	// run an action, then reload; surface errors inline
@@ -51,6 +53,11 @@
 		);
 	};
 
+	const block = (u: U) => {
+		if (!confirm(`Block @${u.handle}? They won't be told, and their requests will stop reaching you.`)) return;
+		return act(() => gql('mutation($id: ID!) { blockUser(userId: $id) }', { id: u.id }), `Blocked @${u.handle}`);
+	};
+
 	$effect(() => {
 		load().catch((e) => (error = e.message));
 	});
@@ -75,7 +82,20 @@
 				<span class="btns">
 					<button onclick={() => respond(r.id, true)}>Accept</button>
 					<button class="sec" onclick={() => respond(r.id, false)}>Decline</button>
+					<button class="sec" onclick={() => block(r.from)}>Block</button>
 				</span>
+			</li>
+		{/each}
+	</ul>
+{/if}
+
+{#if sent.length}
+	<h2>Sent</h2>
+	<ul>
+		{#each sent as s (s.id)}
+			<li>
+				<span>@{s.to.handle}</span>
+				<button class="sec" onclick={() => respond(s.id, false)}>Cancel</button>
 			</li>
 		{/each}
 	</ul>
@@ -87,7 +107,10 @@
 		{#each friends as f (f.id)}
 			<li>
 				<a href="/matchup/{f.id}">@{f.handle}</a>
-				<button class="sec" onclick={() => remove(f)}>Remove</button>
+				<span class="btns">
+					<button class="sec" onclick={() => remove(f)}>Remove</button>
+					<button class="sec" onclick={() => block(f)}>Block</button>
+				</span>
 			</li>
 		{/each}
 	</ul>

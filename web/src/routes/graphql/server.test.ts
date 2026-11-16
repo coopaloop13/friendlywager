@@ -11,7 +11,7 @@ function call(upstream: Response, headers: Record<string, string> = {}) {
 		headers: { 'content-type': 'application/json', ...headers },
 		body: '{"query":"{me{id}}"}'
 	});
-	return { f, res: POST({ request, fetch: f } as never) };
+	return { f, res: POST({ request, fetch: f, getClientAddress: () => '203.0.113.7' } as never) };
 }
 
 describe('graphql proxy', () => {
@@ -24,6 +24,12 @@ describe('graphql proxy', () => {
 		expect(init.headers.get('cookie')).toBe('fw_session=abc');
 		expect(init.headers.get('content-type')).toBe('application/json');
 		expect(await new Response(init.body).text()).toBe('{"query":"{me{id}}"}');
+	});
+
+	it("passes the visitor's IP on and ignores one the visitor claims", async () => {
+		const { f, res } = call(new Response('{}'), { 'x-real-ip': '198.51.100.1' });
+		await res;
+		expect(f.mock.calls[0][1].headers.get('x-real-ip')).toBe('203.0.113.7');
 	});
 
 	it('passes set-cookie back', async () => {
@@ -43,7 +49,7 @@ describe('graphql proxy', () => {
 	it('returns 502 graphql error when API is unreachable', async () => {
 		const f = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
 		const request = new Request('http://localhost/graphql', { method: 'POST', body: '{}' });
-		const res = await POST({ request, fetch: f } as never);
+		const res = await POST({ request, fetch: f, getClientAddress: () => '203.0.113.7' } as never);
 		expect(res.status).toBe(502);
 		expect(await res.json()).toEqual({
 			errors: [{ message: 'API unavailable', extensions: { code: 'UPSTREAM_UNAVAILABLE' } }]

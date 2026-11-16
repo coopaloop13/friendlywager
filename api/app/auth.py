@@ -24,6 +24,13 @@ MAX_ATTEMPTS = 5  # also a CHECK on login_codes.attempts
 _ph = PasswordHasher()
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _HANDLE = re.compile(r"^[a-z0-9_]{3,20}$")
+# Handles are the only text users write, so this short list is all the moderation there is.
+# Checked at sign-up and rename only; nobody who already has a handle is affected.
+_RESERVED = frozenset(
+    "admin administrator anonymous deleted everyone friendlywager help here mod moderator null official "
+    "pickems root sportspicks staff support system undefined".split()
+)
+_BANNED = ("cunt", "faggot", "fuck", "hitler", "nazi", "nigg", "retard", "shit")
 
 
 def issue_token(user_id: uuid.UUID, secret: str) -> str:
@@ -42,6 +49,8 @@ def _handle(raw: str) -> str:
     handle = raw.strip().lower()
     if not _HANDLE.match(handle):
         raise Invalid("Handle must be 3-20 characters: a-z, 0-9, _")
+    if handle in _RESERVED or any(b in handle for b in _BANNED):
+        raise Invalid("That handle isn't available")
     return handle
 
 

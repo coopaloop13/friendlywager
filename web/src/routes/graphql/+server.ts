@@ -1,8 +1,10 @@
 import { API_URL } from '$app/env/private';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
-	const headers = new Headers();
+export const POST: RequestHandler = async ({ request, fetch, getClientAddress }) => {
+	// The API rate-limits per client IP. On a same-zone Worker subrequest Cloudflare turns x-real-ip into the
+	// CF-Connecting-IP the API sees; without it every visitor would share one bucket.
+	const headers = new Headers({ 'x-real-ip': getClientAddress() });
 	for (const h of ['content-type', 'cookie']) {
 		const v = request.headers.get(h);
 		if (v) headers.set(h, v);

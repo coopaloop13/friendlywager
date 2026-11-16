@@ -9,7 +9,7 @@ import strawberry
 from fastapi import Depends, Request, Response
 from graphql import GraphQLError
 from sqlalchemy.ext.asyncio import AsyncSession
-from strawberry.extensions import MaskErrors, SchemaExtension
+from strawberry.extensions import DisableIntrospection, MaskErrors, MaxAliasesLimiter, SchemaExtension
 from strawberry.fastapi import BaseContext, GraphQLRouter
 from strawberry.types import Info
 
@@ -226,6 +226,12 @@ class FriendRequest:
 
 
 @strawberry.type
+class SentRequest:
+    id: strawberry.ID
+    to: User
+
+
+@strawberry.type
 class AuthPayload:
     user: User
     token: str
@@ -267,6 +273,12 @@ class Query:
         ctx = info.context
         rows = await friends.pending_incoming(ctx.session, require_user(ctx))
         return [FriendRequest(id=strawberry.ID(str(f.id)), from_=_to_user(u)) for f, u in rows]
+
+    @strawberry.field
+    async def sent_requests(self, info: Info[Context, None]) -> list[SentRequest]:
+        ctx = info.context
+        rows = await friends.pending_outgoing(ctx.session, require_user(ctx))
+        return [SentRequest(id=strawberry.ID(str(f.id)), to=_to_user(u)) for f, u in rows]
 
     @strawberry.field
     async def current_week(self, info: Info[Context, None], league: League) -> Week | None:
@@ -390,6 +402,18 @@ class Mutation:
         return True
 
     @strawberry.mutation
+    async def block_user(self, info: Info[Context, None], user_id: strawberry.ID) -> bool:
+        ctx = info.context
+        me = require_user(ctx)
+        try:
+            uid = uuid.UUID(str(user_id))
+        except ValueError:
+            raise NotFound("No such user") from None
+        await friends.block(ctx.session, me, uid)
+        await ctx.session.commit()
+        return True
+
+    @strawberry.mutation
     async def save_pick(self, info: Info[Context, None], game_id: strawberry.ID, home: int, away: int) -> PickView:
         ctx = info.context
         me = require_user(ctx)
@@ -411,12 +435,21 @@ def _mask_unexpected(error: GraphQLError) -> bool:
     return error.original_error is not None and "code" not in (error.extensions or {})
 
 
-schema = strawberry.Schema(
-    query=Query,
-    mutation=Mutation,
-    extensions=[DomainErrors, lambda: MaskErrors(should_mask_error=_mask_unexpected, error_message="Internal error")],
-)
+def _schema(public: bool) -> strawberry.Schema:
+    return strawberry.Schema(
+        query=Query,
+        mutation=Mutation,
+        extensions=[
+            DomainErrors,
+            lambda: MaskErrors(should_mask_error=_mask_unexpected, error_message="Internal error"),
+            # No type refers back to another, so depth is bounded by the schema; aliases are the way to
+            # multiply work in one request. No page uses any.
+            lambda: MaxAliasesLimiter(max_alias_count=10),
+            *([DisableIntrospection] if public else []),
+        ],
+    )
 
 
 def make_graphql_router(ide: bool) -> GraphQLRouter:
-    return GraphQLRouter(schema, context_getter=get_context, graphql_ide="graphiql" if ide else None)
+    """ide=True is local development: GraphiQL and introspection on. Production gets neither."""
+    return GraphQLRouter(_schema(public=not ide), context_getter=get_context, graphql_ide="graphiql" if ide else None)

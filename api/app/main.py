@@ -17,11 +17,20 @@ from app.sync.service import sync_league
 
 log = logging.getLogger(__name__)
 STALE_AFTER = timedelta(minutes=30)  # six missed 5-minute crons
+MAX_BODY = 16 * 1024  # the largest page query is under 1 KB
 
 def create_app(settings: Settings | None = None, clock: Clock | None = None) -> FastAPI:
     app = FastAPI()
     app.state.settings = settings or Settings()
     app.state.clock = clock or SystemClock()
+
+    @app.middleware("http")
+    async def cap_body(request: Request, call_next):
+        # ponytail: trusts Content-Length; a chunked body skips this. Count bytes on receive if that is abused.
+        length = request.headers.get("content-length", "0")
+        if not length.isdigit() or int(length) > MAX_BODY:
+            return JSONResponse({"errors": [{"message": "Request too large", "extensions": {"code": "INVALID"}}]}, 413)
+        return await call_next(request)
 
     @app.get("/health")
     async def health(request: Request, session: AsyncSession = Depends(get_session)):
