@@ -26,10 +26,11 @@ it('does not drive the loading overlay (tap preload would block the click)', asy
 	const { get } = await import('svelte/store');
 	const { pending } = await import('#lib/gql.js');
 	let done!: (r: Response) => void;
-	const slow = () => new Promise<Response>((r) => (done = r));
+	const slow = vi.fn(() => new Promise<Response>((r) => (done = r)));
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const p = (load as any)({ fetch: slow, url: new URL('/', 'http://x'), untrack: (f: () => unknown) => f() });
 	expect(get(pending)).toBe(0);
+	await vi.waitFor(() => expect(slow).toHaveBeenCalled()); // the request goes out a tick later
 	done(Response.json({ data: { me: null } }));
 	await p;
 });

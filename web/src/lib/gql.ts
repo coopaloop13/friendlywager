@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { endpoint } from './native';
 
 export class GqlError extends Error {
 	constructor(
@@ -20,10 +21,11 @@ export async function gql<T>(
 ): Promise<T> {
 	if (!quiet) pending.update((n) => n + 1);
 	try {
+		const { url, headers } = await endpoint();
 		const send = () =>
-			f('/graphql', {
+			f(url, {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'application/json', ...headers },
 				body: JSON.stringify({ query, variables })
 			});
 		let res = await send();

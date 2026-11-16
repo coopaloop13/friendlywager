@@ -1,10 +1,13 @@
 <script lang="ts">
 	// Team logo on a light chip (ESPN logos are drawn for light backgrounds); falls back to the abbreviation.
+	// The store apps always show the abbreviation: the logos are not ours to ship in an app.
+	import { isNative } from '#lib/native.js';
+
 	let { logo, abbr, name, size = 28 }: { logo: string | null; abbr: string; name: string; size?: number } = $props();
 	let broken = $state(false);
 </script>
 
-{#if logo && !broken}
+{#if logo && !broken && !isNative()}
 	<img
 		class="mark"
 		src={logo}

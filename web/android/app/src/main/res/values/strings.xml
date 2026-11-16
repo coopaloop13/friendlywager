@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pick\'ems</string>
+    <string name="title_activity_main">Pick\'ems</string>
+    <string name="package_name">cc.sportspicks.app</string>
+    <string name="custom_url_scheme">cc.sportspicks.app</string>
+</resources>

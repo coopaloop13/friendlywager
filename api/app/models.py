@@ -25,6 +25,18 @@ class User(Base):
     handle: Mapped[str] = mapped_column(String, unique=True)
     password_hash: Mapped[str | None] = mapped_column(String)  # legacy; sign-in is by emailed code
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    reminded_at: Mapped[datetime | None] = mapped_column(TS)  # last "picks lock soon" push
+
+
+class DeviceToken(Base):
+    """A phone that gets this user's push reminders. A device has one owner: whoever signed in on it last."""
+
+    __tablename__ = "device_tokens"
+    __table_args__ = (CheckConstraint("platform IN ('ios','android')", name="ck_device_tokens_platform"),)
+    token: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    platform: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
 
 class LoginCode(Base):

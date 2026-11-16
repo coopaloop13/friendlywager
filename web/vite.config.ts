@@ -1,4 +1,5 @@
 import adapter from '@sveltejs/adapter-cloudflare';
+import adapterStatic from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
@@ -11,7 +12,8 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			adapter: adapter()
+			// BUILD_TARGET=app: plain files for the Capacitor shell (see capacitor.config.ts). Default: the web Worker.
+			adapter: process.env.BUILD_TARGET === 'app' ? adapterStatic({ fallback: 'index.html' }) : adapter()
 		})
 	]
 });

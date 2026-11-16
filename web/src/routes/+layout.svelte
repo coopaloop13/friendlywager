@@ -147,6 +147,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.75rem 1rem;
+		padding-top: calc(0.75rem + env(safe-area-inset-top)); /* clear the phone's status bar in the app */
 		background: var(--turf-dark) repeating-linear-gradient(90deg, transparent 0 48px, rgb(255 255 255 / 0.1) 48px 50px);
 		border-bottom: 4px solid var(--gold);
 		color: #fff;

@@ -13,7 +13,7 @@ from strawberry.extensions import DisableIntrospection, MaskErrors, MaxAliasesLi
 from strawberry.fastapi import BaseContext, GraphQLRouter
 from strawberry.types import Info
 
-from app import auth, friends, picks, results
+from app import auth, friends, picks, reminders, results
 from app.clock import Clock
 from app.config import Settings
 from app.db import get_session
@@ -410,6 +410,20 @@ class Mutation:
         except ValueError:
             raise NotFound("No such user") from None
         await friends.block(ctx.session, me, uid)
+        await ctx.session.commit()
+        return True
+
+    @strawberry.mutation
+    async def register_device(self, info: Info[Context, None], token: str, platform: str) -> bool:
+        ctx = info.context
+        await reminders.register_device(ctx.session, require_user(ctx), token, platform)
+        await ctx.session.commit()
+        return True
+
+    @strawberry.mutation
+    async def unregister_device(self, info: Info[Context, None], token: str) -> bool:
+        ctx = info.context
+        await reminders.unregister_device(ctx.session, require_user(ctx), token)
         await ctx.session.commit()
         return True
 

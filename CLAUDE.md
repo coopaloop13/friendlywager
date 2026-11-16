@@ -23,6 +23,8 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 - Abuse limits: the `fw-api` Worker allows 120 `/graphql` requests and 5 sign-in code requests per client IP per minute (429, code `RATE_LIMITED`); the web proxy passes the visitor's IP as `x-real-ip`. The API refuses bodies over 16 KB and more than 10 aliases, and has no introspection in production.
 - Invite links: `/add/<handle>`. Logged out, the handle is kept in `sessionStorage` through sign-in; the request is only ever sent by a tap on that page, never by opening the link.
 - Public pages (no login): `/`, `/login`, `/terms`, `/privacy`. No money, no prizes; minimum age 13. The contact and report address is `SUPPORT` in `web/src/lib/site.ts`.
+- Store apps: the same web app in a Capacitor shell (`web/ios`, `web/android`, app id `cc.sportspicks.app`). Build with `npm run build:app` in `web/` (static build + `cap sync`). In the shell, `web/src/lib/native.ts` sends requests straight to `api.sportspicks.cc` with the session token (kept in device preferences) as a bearer token; the API allows only the shell origins by CORS. The shell shows team abbreviations, never ESPN logos.
+- Reminders: the sync cron pushes "picks lock soon" to users with a registered device and an unpicked game kicking off within the hour, at most once per 12 hours per user. `Notifier` is injected like `EmailSender`; until a Firebase project exists it only logs.
 - Deleting an account removes the user, their picks and their friendships for good; their friends lose that history too.
 - Auth cookie `fw_session`: HttpOnly, SameSite=Lax, Secure when `COOKIE_SECURE=true`. The same JWT is accepted as `Authorization: Bearer <token>`.
 - Development principles: **TDD** (a failing test first in every task), **SOLID** (services depend on injected `Clock`, `ScoreboardClient`, `EmailSender`, and `AsyncSession`, never on concrete globals), **ACID** (integrity in Postgres constraints; every multi-step write in one transaction).
@@ -39,7 +41,7 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 ## Principles
 
 - TDD first: a failing test before any implementation.
-- SOLID: inject `Clock`, `ScoreboardClient`, `EmailSender`, `AsyncSession`; no concrete globals.
+- SOLID: inject `Clock`, `ScoreboardClient`, `EmailSender`, `Notifier`, `AsyncSession`; no concrete globals.
 - GraphQL: resolvers stay thin (args → one service call → GraphQL type). Each field returns only what its screen needs. Pages query only the fields they render, so responses stay small. Sibling fields share one `AsyncSession` and are serialized by `Context.db_lock` in `DomainErrors.resolve`; never run concurrent session work (e.g. `asyncio.gather`). Each page's exact query string gets a test.
 - ACID: integrity lives in Postgres constraints; multi-step writes use one transaction.
 

@@ -15,11 +15,13 @@ it('counts in-flight requests in `pending`, except quiet ones', async () => {
 	const f = vi.fn(() => new Promise<Response>((r) => (done = r)));
 	const p = gql('{me{id}}', undefined, f);
 	expect(get(pending)).toBe(1);
+	await vi.waitFor(() => expect(f).toHaveBeenCalledTimes(1)); // the request goes out a tick later
 	done(Response.json({ data: {} }));
 	await p;
 	expect(get(pending)).toBe(0);
 	const q = gql('{me{id}}', undefined, f, { quiet: true });
 	expect(get(pending)).toBe(0);
+	await vi.waitFor(() => expect(f).toHaveBeenCalledTimes(2));
 	done(Response.json({ data: {} }));
 	await q;
 });

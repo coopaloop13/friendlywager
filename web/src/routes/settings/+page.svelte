@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { gql } from '#lib/gql.js';
 	import { CHANGE_HANDLE, DELETE_ACCOUNT, forget } from '#lib/account.js';
+	import { signedOut } from '#lib/native.js';
 	import { reportHref, SUPPORT } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -32,6 +33,7 @@
 		try {
 			await gql(mutation);
 			forget();
+			await signedOut();
 			await invalidateAll();
 			await goto('/');
 		} catch (err) {

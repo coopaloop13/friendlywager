@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { gql, GqlError } from '#lib/gql.js';
 	import { REQUEST_CODE, VERIFY_CODE, takeInvite } from '#lib/account.js';
+	import { signedIn } from '#lib/native.js';
 
 	let step = $state<'email' | 'code' | 'handle'>('email');
 	let email = $state('');
@@ -27,7 +28,12 @@
 		e.preventDefault();
 		error = info = '';
 		try {
-			await gql(VERIFY_CODE, { email, code, handle: step === 'handle' ? handle : null });
+			const d = await gql<{ verifyLoginCode: { token: string } }>(VERIFY_CODE, {
+				email,
+				code,
+				handle: step === 'handle' ? handle : null
+			});
+			await signedIn(d.verifyLoginCode.token);
 			await invalidateAll();
 			const invite = takeInvite();
 			await goto(invite ? `/add/${invite}` : '/');
