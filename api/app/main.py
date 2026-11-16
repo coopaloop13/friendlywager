@@ -28,6 +28,8 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
     app = FastAPI()
     app.state.settings = settings or Settings()
     app.state.clock = clock or SystemClock()
+    # visible in the Worker logs after each container start: says whether reminders really go out
+    log.warning("push reminders: %s", "Firebase" if app.state.settings.fcm_service_account else "log only")
 
     app.add_middleware(
         CORSMiddleware, allow_origins=APP_ORIGINS, allow_methods=["POST"], allow_headers=["authorization", "content-type"]
