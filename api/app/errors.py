@@ -28,3 +28,19 @@ class Locked(DomainError):
 
 class Unauthenticated(DomainError):
     code = "UNAUTHENTICATED"
+
+
+class HandleRequired(DomainError):
+    """The code was right but the email is new: ask for a handle and verify again with the same code."""
+
+    code = "HANDLE_REQUIRED"
+
+
+class RateLimited(DomainError):
+    code = "RATE_LIMITED"
+
+
+class Unavailable(DomainError):
+    """Something we depend on failed; the message is safe to show and the action is worth retrying."""
+
+    code = "UNAVAILABLE"

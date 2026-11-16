@@ -28,8 +28,8 @@ export async function gql<T>(
 			});
 		let res = await send();
 		// 5xx means the proxy or a starting container, never a resolver (those answer 200 with `errors`).
-		// ponytail: mutations are retried too; every one is an upsert or safe to repeat except signUp,
-		// which would report "taken" on a retry that follows a lost success. Skip mutations if that bites.
+		// ponytail: mutations are retried too; every one is an upsert or safe to repeat except verifyLoginCode,
+		// which would report an invalid code on a retry that follows a lost success. Skip mutations if that bites.
 		for (const ms of retries) {
 			if (res.status < 500) break;
 			await new Promise((r) => setTimeout(r, ms));

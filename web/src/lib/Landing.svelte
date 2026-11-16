@@ -10,10 +10,9 @@
 	<h1>Call the score.<br />Beat your friends.</h1>
 	<p class="lede">Weekly pick'em for bragging rights. No money, just glory.</p>
 	<div class="cta">
-		<a class="btn primary" href="/signup">Sign up</a>
-		<a class="btn" href="/login">Log in</a>
+		<a class="btn primary" href="/login">Get started</a>
 	</div>
-	<p class="invite">Invite code required to sign up.</p>
+	<p class="invite">Sign in with your email. No password to remember.</p>
 </section>
 
 <ol class="steps">

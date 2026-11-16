@@ -22,7 +22,7 @@
 <div class="app">
 	<header class="field">
 		<a href="/" class="brand">🏈 Friendly Wager</a>
-		{#if data.user}<span class="me">@{data.user.handle}</span>{/if}
+		{#if data.user}<a class="me" href="/settings" aria-label="Settings for @{data.user.handle}">@{data.user.handle} ⚙︎</a>{/if}
 	</header>
 
 	<main class:nav={data.user}>
@@ -160,6 +160,8 @@
 	.me {
 		font-family: var(--display);
 		color: var(--gold);
+		text-decoration: none;
+		padding: 0.5rem 0;
 	}
 	main.nav {
 		padding-bottom: 5.5rem;

@@ -18,7 +18,8 @@ export const load: LayoutLoad = async ({ fetch, url, untrack }) => {
 	// untracked: otherwise every tab switch reruns this load and refetches `me` before the page can swap.
 	// Log in/out call invalidateAll(), which reruns it with the current url.
 	const path = untrack(() => url.pathname);
-	const isAuthPage = path === '/login' || path === '/signup';
+	if (path === '/signup') redirect(307, '/login'); // old links; the login page signs new people up now
+	const isAuthPage = path === '/login';
 	if (!me && !isAuthPage && path !== '/') redirect(307, '/');
 	if (me && isAuthPage) redirect(307, '/');
 	return { user: me, unavailable: false };

@@ -10,8 +10,12 @@ it('sends logged-out visitors to the landing page at root', async () => {
 	expect(await target(run('/friends', null))).toBe('/');
 });
 
-it('lets logged-out visitors see root, login and signup', async () => {
-	for (const p of ['/', '/login', '/signup']) expect(await target(run(p, null))).toBeNull();
+it('lets logged-out visitors see root and login', async () => {
+	for (const p of ['/', '/login']) expect(await target(run(p, null))).toBeNull();
+});
+
+it('sends the retired signup page to login, where new accounts are made now', async () => {
+	expect(await target(run('/signup', null))).toBe('/login');
 });
 
 it('sends logged-in users from login to home', async () => {

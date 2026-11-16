@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app import friends
 from app.models import Friendship
-from test_auth import SIGN_UP, code, gql, su
+from test_auth import code, gql, join
 
 SEND = "mutation($h:String!){sendFriendRequest(handle:$h)}"
 RESPOND = "mutation($i:ID!,$a:Boolean!){respondToFriendRequest(id:$i,accept:$a)}"
@@ -16,8 +16,8 @@ PENDING = "{ pendingRequests { id from { handle } } }"
 
 
 async def make_user(client, handle):
-    _, b = await gql(client, SIGN_UP, su(email=f"{handle}@x.com", handle=handle))
-    d = b["data"]["signUp"]
+    _, b = await join(client, f"{handle}@x.com", handle)
+    d = b["data"]["verifyLoginCode"]
     client.cookies.clear()
     return {"Authorization": f"Bearer {d['token']}"}, d["user"]["id"]
 

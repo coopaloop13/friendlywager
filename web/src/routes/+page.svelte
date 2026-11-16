@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { goto, invalidateAll } from '$app/navigation';
 	import { cached, gql, remember } from '#lib/gql.js';
 	import { GAME_FIELDS, leagueFrom, type GameView, type PickView, type WeekView } from '#lib/picks.js';
 	import GameCard from '#lib/GameCard.svelte';
@@ -44,11 +43,6 @@
 		return () => (stale = true);
 	});
 
-	async function logOut() {
-		await gql('mutation { logOut }');
-		await invalidateAll();
-		await goto('/');
-	}
 </script>
 
 {#if !data.user}
@@ -70,7 +64,6 @@
 			<p>No games this week.</p>
 		{/each}
 	{/if}
-	<button class="out" onclick={logOut}>Log out</button>
 {/if}
 
 <style>
@@ -79,13 +72,5 @@
 		font-family: var(--display);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-	}
-	.out {
-		background: none;
-		border: none;
-		box-shadow: none;
-		color: var(--red);
-		min-height: 44px;
-		margin-top: 1rem;
 	}
 </style>

@@ -161,14 +161,4 @@ def test_empty_sync_secret_rejected():
     from app.config import Settings
 
     with pytest.raises(ValidationError):
-        Settings(database_url="x", session_secret="s" * 32, invite_code="i", sync_secret="")
-
-
-def test_short_invite_code_rejected():
-    import pytest
-    from pydantic import ValidationError
-
-    from app.config import Settings
-
-    with pytest.raises(ValidationError):
-        Settings(database_url="x", session_secret="s" * 32, invite_code="", sync_secret="s" * 16)
+        Settings(database_url="x", session_secret="s" * 32, sync_secret="")

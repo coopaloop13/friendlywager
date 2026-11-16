@@ -17,6 +17,7 @@ from app import auth, friends, picks, results
 from app.clock import Clock
 from app.config import Settings
 from app.db import get_session
+from app.email import EmailSender, get_email_sender
 from app.errors import DomainError, Forbidden, NotFound, Unauthenticated
 from app.models import Game as GameModel
 from app.models import Pick as PickModel
@@ -34,6 +35,7 @@ class Context(BaseContext):
     settings: Settings
     user_id: uuid.UUID | None
     response: Response
+    email: EmailSender
     # sibling fields resolve concurrently, but one AsyncSession allows one operation at a time
     db_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -45,13 +47,16 @@ def require_user(ctx: Context) -> uuid.UUID:
 
 
 async def get_context(
-    request: Request, response: Response, session: AsyncSession = Depends(get_session)
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+    email: EmailSender = Depends(get_email_sender),
 ) -> Context:
     settings: Settings = request.app.state.settings
     header = request.headers.get("authorization", "")
     token = header[7:] if header.lower().startswith("bearer ") else request.cookies.get(COOKIE)
     user_id = auth.read_token(token, settings.session_secret) if token else None
-    return Context(session, request.app.state.clock, settings, user_id, response)
+    return Context(session, request.app.state.clock, settings, user_id, response, email)
 
 
 class DomainErrors(SchemaExtension):
@@ -238,6 +243,10 @@ def _start_session(ctx: Context, u: UserModel) -> AuthPayload:
     return AuthPayload(user=_to_user(u), token=token)
 
 
+def _end_session(ctx: Context) -> None:
+    ctx.response.delete_cookie(COOKIE, httponly=True, samesite="lax")
+
+
 @strawberry.type
 class Query:
     @strawberry.field
@@ -314,29 +323,39 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    async def sign_up(
-        self, info: Info[Context, None], email: str, password: str, handle: str, invite_code: str
+    async def request_login_code(self, info: Info[Context, None], email: str) -> bool:
+        ctx = info.context
+        await auth.request_login_code(ctx.session, ctx.email, ctx.clock, email=email)
+        await ctx.session.commit()
+        return True
+
+    @strawberry.mutation
+    async def verify_login_code(
+        self, info: Info[Context, None], email: str, code: str, handle: str | None = None
     ) -> AuthPayload:
         ctx = info.context
-        u = await auth.sign_up(
-            ctx.session,
-            email=email,
-            password=password,
-            handle=handle,
-            invite_code=invite_code,
-            expected_invite=ctx.settings.invite_code,
-        )
+        u = await auth.verify_login_code(ctx.session, ctx.clock, email=email, code=code, handle=handle)
         await ctx.session.commit()
         return _start_session(ctx, u)
 
     @strawberry.mutation
-    async def log_in(self, info: Info[Context, None], email: str, password: str) -> AuthPayload:
-        ctx = info.context
-        return _start_session(ctx, await auth.log_in(ctx.session, email=email, password=password))
+    async def log_out(self, info: Info[Context, None]) -> bool:
+        _end_session(info.context)
+        return True
 
     @strawberry.mutation
-    async def log_out(self, info: Info[Context, None]) -> bool:
-        info.context.response.delete_cookie(COOKIE, httponly=True, samesite="lax")
+    async def change_handle(self, info: Info[Context, None], handle: str) -> User:
+        ctx = info.context
+        u = await auth.change_handle(ctx.session, require_user(ctx), handle)
+        await ctx.session.commit()
+        return _to_user(u)
+
+    @strawberry.mutation
+    async def delete_account(self, info: Info[Context, None]) -> bool:
+        ctx = info.context
+        await auth.delete_account(ctx.session, require_user(ctx))
+        await ctx.session.commit()
+        _end_session(ctx)
         return True
 
     @strawberry.mutation

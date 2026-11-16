@@ -23,8 +23,22 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), **UUID_PK)
     email: Mapped[str] = mapped_column(String, unique=True)
     handle: Mapped[str] = mapped_column(String, unique=True)
-    password_hash: Mapped[str] = mapped_column(String)
+    password_hash: Mapped[str | None] = mapped_column(String)  # legacy; sign-in is by emailed code
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class LoginCode(Base):
+    """One live sign-in code per email. A new request replaces it."""
+
+    __tablename__ = "login_codes"
+    __table_args__ = (
+        CheckConstraint("email = lower(email)", name="ck_login_codes_email_lower"),
+        CheckConstraint("attempts BETWEEN 0 AND 5", name="ck_login_codes_attempts"),
+    )
+    email: Mapped[str] = mapped_column(String, primary_key=True)
+    code_hash: Mapped[str] = mapped_column(String)
+    expires_at: Mapped[datetime] = mapped_column(TS)
+    attempts: Mapped[int] = mapped_column(SmallInteger, server_default="0")
 
 
 class Friendship(Base):

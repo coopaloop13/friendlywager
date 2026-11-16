@@ -11,11 +11,12 @@ from sqlalchemy.pool import NullPool
 
 from app.config import Settings
 from app.db import get_session
+from app.email import get_email_sender
 from app.main import create_app
 
 TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
 TEST_SECRET = "test-secret-0123456789-0123456789-abcdef"
-TABLES = "users, friendships, games, picks, league_state"
+TABLES = "users, friendships, games, picks, league_state, login_codes"
 
 
 class FixedClock:
@@ -44,6 +45,14 @@ async def session(migrated):
     await engine.dispose()
 
 
+class FakeEmailSender:
+    def __init__(self):
+        self.sent: list[tuple[str, str, str]] = []  # (to, subject, text)
+
+    async def send(self, to: str, subject: str, text: str) -> None:
+        self.sent.append((to, subject, text))
+
+
 @pytest.fixture
 def clock():
     return FixedClock(datetime.now(UTC))
@@ -54,7 +63,6 @@ async def client(session, clock):
     settings = Settings(
         database_url=TEST_DATABASE_URL,
         session_secret=TEST_SECRET,
-        invite_code="test-invite",
         sync_secret="test-sync-secret-0123456789",
         cookie_secure=False,
     )
@@ -64,5 +72,8 @@ async def client(session, clock):
         yield session
 
     app.dependency_overrides[get_session] = _session
+    sender = FakeEmailSender()
+    app.dependency_overrides[get_email_sender] = lambda: sender
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+        c.outbox = sender.sent
         yield c

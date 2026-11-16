@@ -5,8 +5,9 @@ declare global {
 	interface Env {
 		DATABASE_URL: string;
 		SESSION_SECRET: string;
-		INVITE_CODE: string;
 		SYNC_SECRET: string;
+		EMAIL_API_TOKEN: string;
+		CLOUDFLARE_ACCOUNT_ID: string;
 	}
 }
 
@@ -20,8 +21,9 @@ export class Api extends Container<Env> {
 		this.envVars = {
 			DATABASE_URL: env.DATABASE_URL,
 			SESSION_SECRET: env.SESSION_SECRET,
-			INVITE_CODE: env.INVITE_CODE,
 			SYNC_SECRET: env.SYNC_SECRET,
+			EMAIL_API_TOKEN: env.EMAIL_API_TOKEN,
+			CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
 			COOKIE_SECURE: "true",
 		};
 	}

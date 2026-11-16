@@ -15,9 +15,10 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 - Leagues are `nfl` and `cfb`, with separate weeks keyed by `(league, season, season_type, week)`.
 - Slate: all NFL games; CFB games where either team's AP rank is ≤ 25 at load time. Once loaded, a game is never removed.
 - Handles: stored lowercase, `^[a-z0-9_]{3,20}$`, unique. Emails stored lowercase, unique.
-- Sign-up requires `INVITE_CODE` (env).
+- Sign-in is by a 6-digit code emailed to the address (10 minutes, 5 attempts, one live code per email, stored hashed). A new email picks a handle with the same code. No passwords, no invite code.
+- Deleting an account removes the user, their picks and their friendships for good; their friends lose that history too.
 - Auth cookie `fw_session`: HttpOnly, SameSite=Lax, Secure when `COOKIE_SECURE=true`. The same JWT is accepted as `Authorization: Bearer <token>`.
-- Development principles: **TDD** (a failing test first in every task), **SOLID** (services depend on injected `Clock`, `ScoreboardClient`, and `AsyncSession`, never on concrete globals), **ACID** (integrity in Postgres constraints; every multi-step write in one transaction).
+- Development principles: **TDD** (a failing test first in every task), **SOLID** (services depend on injected `Clock`, `ScoreboardClient`, `EmailSender`, and `AsyncSession`, never on concrete globals), **ACID** (integrity in Postgres constraints; every multi-step write in one transaction).
 - Local lifecycle: `docker compose up --build` and `docker compose down -v`.
 - Every commit message ends with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
@@ -26,12 +27,12 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 - The spread affecting scoring in any way. The spread is shown for information only.
 - A user seeing a friend's pick for a game before that game kicks off.
 - A pick being created or changed after kickoff.
-- Losing historical picks or results.
+- Losing historical picks or results (the one exception: a user deleting their own account).
 
 ## Principles
 
 - TDD first: a failing test before any implementation.
-- SOLID: inject `Clock`, `ScoreboardClient`, `AsyncSession`; no concrete globals.
+- SOLID: inject `Clock`, `ScoreboardClient`, `EmailSender`, `AsyncSession`; no concrete globals.
 - GraphQL: resolvers stay thin (args → one service call → GraphQL type). Each field returns only what its screen needs. Pages query only the fields they render, so responses stay small. Sibling fields share one `AsyncSession` and are serialized by `Context.db_lock` in `DomainErrors.resolve`; never run concurrent session work (e.g. `asyncio.gather`). Each page's exact query string gets a test.
 - ACID: integrity lives in Postgres constraints; multi-step writes use one transaction.
 
@@ -49,7 +50,7 @@ API: Cloudflare Worker `fw-api` (`deploy/api-worker`, serves `api.sportspicks.cc
 1. Confirm `npx wrangler whoami` shows the intended Cloudflare account (see your notes; never commit emails or account_id).
 2. Create a Neon database. `DATABASE_URL` must be `postgresql+asyncpg://USER:PASS@HOST/DB?ssl=require` (asyncpg scheme, TLS required).
 3. Migrations: none to run by hand. The container runs `alembic upgrade head` on every start (optional manual run: `DATABASE_URL=... alembic upgrade head` from `api/`).
-4. In `deploy/api-worker`, `npm i`, then `npx wrangler secret put` for each of `DATABASE_URL`, `SESSION_SECRET` (>=32 chars), `INVITE_CODE` (any shared code, 6+ chars), `SYNC_SECRET` (>=16 chars). Generate SESSION_SECRET and SYNC_SECRET with `openssl rand -base64 48`. The first `secret put` before the first deploy will offer to create the Worker; accept.
+4. In `deploy/api-worker`, `npm i`, then `npx wrangler secret put` for each of `DATABASE_URL`, `SESSION_SECRET` (>=32 chars), `SYNC_SECRET` (>=16 chars), `EMAIL_API_TOKEN` (Cloudflare API token with Email Sending permission) and `CLOUDFLARE_ACCOUNT_ID`. Sign-in codes are sent from `signin@sportspicks.cc` through Cloudflare Email Service (`npx wrangler email sending enable sportspicks.cc`); without the two email secrets the code is only written to the container log and nobody can sign in. Generate SESSION_SECRET and SYNC_SECRET with `openssl rand -base64 48`. The first `secret put` before the first deploy will offer to create the Worker; accept.
 5. `npx wrangler deploy` in `deploy/api-worker` (needs Docker running; builds the image with the Dockerfile default `INSTALL_DEV=0`). Allow a few minutes for container provisioning.
 6. Web: `cd web && npm run build && npx wrangler deploy` (use `docker compose run --rm --no-deps web sh -c "npm run build && npx wrangler deploy"` if host Node fails the engine check).
 7. Dry runs: `npx wrangler deploy --dry-run` in either directory.
