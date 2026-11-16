@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { rememberInvite } from '#lib/account.js';
 import { gql } from '#lib/gql.js';
 import type { LayoutLoad } from './$types';
 
@@ -20,7 +21,11 @@ export const load: LayoutLoad = async ({ fetch, url, untrack }) => {
 	const path = untrack(() => url.pathname);
 	if (path === '/signup') redirect(307, '/login'); // old links; the login page signs new people up now
 	const isAuthPage = path === '/login';
-	if (!me && !isAuthPage && path !== '/') redirect(307, '/');
+	if (!me && path.startsWith('/add/')) {
+		rememberInvite(decodeURIComponent(path.slice(5)));
+		redirect(307, '/login'); // the login page sends them back to the invite once they're in
+	}
+	if (!me && !isAuthPage && !['/', '/terms', '/privacy'].includes(path)) redirect(307, '/');
 	if (me && isAuthPage) redirect(307, '/');
 	return { user: me, unavailable: false };
 };

@@ -51,3 +51,27 @@ it('reports an unreachable API instead of throwing or redirecting', async () => 
 	expect(await p).toEqual({ user: null, unavailable: true });
 	vi.useRealTimers();
 });
+
+it('lets logged-out visitors read the terms and privacy pages', async () => {
+	for (const p of ['/terms', '/privacy']) expect(await target(run(p, null))).toBeNull();
+});
+
+it('sends a logged-out invite link to sign-in and remembers who invited', async () => {
+	const store = new Map<string, string>();
+	vi.stubGlobal('sessionStorage', {
+		setItem: (k: string, v: string) => void store.set(k, v),
+		getItem: (k: string) => store.get(k) ?? null,
+		removeItem: (k: string) => void store.delete(k)
+	});
+	expect(await target(run('/add/Maria', null))).toBe('/login');
+	const { takeInvite } = await import('#lib/account.js');
+	expect(takeInvite()).toBe('maria');
+	expect(takeInvite()).toBeNull(); // used once
+	expect(await target(run('/add/not a handle!', null))).toBe('/login');
+	expect(takeInvite()).toBeNull();
+	vi.unstubAllGlobals();
+});
+
+it('lets a logged-in user open an invite link', async () => {
+	expect(await target(run('/add/maria', { id: '1', handle: 'a' }))).toBeNull();
+});

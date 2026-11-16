@@ -11,4 +11,4 @@ class Settings(BaseSettings):
     email_api_token: str | None = None
     cloudflare_account_id: str | None = None
     email_from: str = "signin@sportspicks.cc"
-    email_from_name: str = "Friendly Wager"
+    email_from_name: str = "Pick'ems"

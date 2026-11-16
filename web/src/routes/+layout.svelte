@@ -16,12 +16,13 @@
 </script>
 
 <svelte:head>
+	<title>Pick'ems: Box Score Picks</title>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
 <div class="app">
 	<header class="field">
-		<a href="/" class="brand">🏈 Friendly Wager</a>
+		<a href="/" class="brand">🏈 Pick'ems</a>
 		{#if data.user}<a class="me" href="/settings" aria-label="Settings for @{data.user.handle}">@{data.user.handle} ⚙︎</a>{/if}
 	</header>
 

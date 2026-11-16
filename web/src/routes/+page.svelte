@@ -5,6 +5,7 @@
 	import GameCard from '#lib/GameCard.svelte';
 	import LeagueToggle from '#lib/LeagueToggle.svelte';
 	import Landing from '#lib/Landing.svelte';
+	import Invite from '#lib/Invite.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -15,6 +16,7 @@
 	let week = $state<W>(null);
 	let loading = $state(true);
 	let error = $state('');
+	let friendless = $state(false); // unknown until the first answer, so the prompt never flashes
 
 	$effect(() => {
 		if (!data.user) return;
@@ -27,8 +29,8 @@
 		week = hit;
 		loading = !hit;
 		error = '';
-		gql<{ currentWeek: W }>(
-			`query($l: League!) { currentWeek(league: $l) { league season seasonType week games { ${GAME_FIELDS} myPick { home away } } } }`,
+		gql<{ currentWeek: W; friends: { id: string }[] }>(
+			`query($l: League!) { currentWeek(league: $l) { league season seasonType week games { ${GAME_FIELDS} myPick { home away } } } friends { id } }`,
 			{ l },
 			fetch,
 			{ quiet: !!hit }
@@ -36,6 +38,7 @@
 			.then((d) => {
 				if (stale) return;
 				week = d.currentWeek;
+				friendless = d.friends.length === 0;
 				remember(key, week);
 			})
 			.catch((e) => stale || (error = e.message))
@@ -49,6 +52,12 @@
 	<Landing />
 {:else}
 	<h1>This week</h1>
+	{#if friendless}
+		<aside class="invite">
+			<p><strong>Picks need a rival.</strong> Invite a friend and go head to head every week.</p>
+			<Invite handle={data.user.handle} />
+		</aside>
+	{/if}
 	<LeagueToggle {league} />
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
 	{#if loading}
@@ -67,6 +76,17 @@
 {/if}
 
 <style>
+	.invite {
+		margin-bottom: 1rem;
+		padding: 0.9rem 1rem;
+		background: var(--chalk);
+		border: 2px solid var(--line);
+		border-left: 6px solid var(--gold);
+		border-radius: 12px;
+	}
+	.invite p {
+		margin: 0 0 0.75rem;
+	}
 	.sub {
 		color: var(--muted);
 		font-family: var(--display);

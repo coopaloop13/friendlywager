@@ -75,8 +75,8 @@ async def request_login_code(session: AsyncSession, sender: EmailSender, clock: 
     )
     await sender.send(
         email,
-        f"{code} is your sign-in code",
-        f"Your sign-in code is {code}\n\nIt expires in {CODE_MINUTES} minutes. "
+        f"{code} is your Pick'ems sign-in code",
+        f"Your Pick'ems sign-in code is {code}\n\nIt expires in {CODE_MINUTES} minutes. "
         "If you didn't ask for it, ignore this email.",
     )
 

@@ -1,4 +1,6 @@
-# Friendly Wager
+# Pick'ems: Box Score Picks
+
+Public name: **Pick'ems: Box Score Picks** (short: Pick'ems). The repo, Workers (`fw-*`), cookie and storage keys keep the old working name, Friendly Wager.
 
 ## What this is
 
@@ -19,6 +21,8 @@ A small social app for friendly, no-money pick'em between friends on NFL and col
 - Blocking a user removes any friendship or request between the two and silently drops that user's later requests; they are never told. Sending a request to someone you blocked unblocks them.
 - At most 20 unanswered sent friend requests per user; the sender can cancel one. Handles on a short reserved/offensive list are refused at sign-up and rename.
 - Abuse limits: the `fw-api` Worker allows 120 `/graphql` requests and 5 sign-in code requests per client IP per minute (429, code `RATE_LIMITED`); the web proxy passes the visitor's IP as `x-real-ip`. The API refuses bodies over 16 KB and more than 10 aliases, and has no introspection in production.
+- Invite links: `/add/<handle>`. Logged out, the handle is kept in `sessionStorage` through sign-in; the request is only ever sent by a tap on that page, never by opening the link.
+- Public pages (no login): `/`, `/login`, `/terms`, `/privacy`. No money, no prizes; minimum age 13. The contact and report address is `SUPPORT` in `web/src/lib/site.ts`.
 - Deleting an account removes the user, their picks and their friendships for good; their friends lose that history too.
 - Auth cookie `fw_session`: HttpOnly, SameSite=Lax, Secure when `COOKIE_SECURE=true`. The same JWT is accepted as `Authorization: Bearer <token>`.
 - Development principles: **TDD** (a failing test first in every task), **SOLID** (services depend on injected `Clock`, `ScoreboardClient`, `EmailSender`, and `AsyncSession`, never on concrete globals), **ACID** (integrity in Postgres constraints; every multi-step write in one transaction).

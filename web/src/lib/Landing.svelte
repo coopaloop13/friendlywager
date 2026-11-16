@@ -2,7 +2,7 @@
 	import Football from '#lib/Football.svelte';
 </script>
 
-<svelte:head><title>Friendly Wager · Pick'em with friends</title></svelte:head>
+<svelte:head><title>Pick'ems: Box Score Picks</title></svelte:head>
 
 <section class="hero">
 	<div class="ball"><Football /></div>
@@ -30,7 +30,21 @@
 	</li>
 </ol>
 
+<footer>
+	<p>Free and for fun. No money, no prizes, no betting.</p>
+	<p><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>
+</footer>
+
 <style>
+	footer {
+		margin-top: 1.5rem;
+		text-align: center;
+		font-size: 0.85rem;
+		color: var(--muted);
+	}
+	footer p {
+		margin: 0.25rem 0;
+	}
 	.hero {
 		margin: -1rem -1rem 0;
 		padding: 2rem 1.25rem 1.75rem;

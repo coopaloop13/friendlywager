@@ -13,7 +13,7 @@ def settings(**kw):
 
 
 def cf(handler):
-    return CloudflareEmailSender("tok", "acct", "signin@sportspicks.cc", "Friendly Wager", httpx.MockTransport(handler))
+    return CloudflareEmailSender("tok", "acct", "signin@sportspicks.cc", "Pick'ems", httpx.MockTransport(handler))
 
 
 async def test_cloudflare_sender_posts_the_message():
@@ -28,7 +28,7 @@ async def test_cloudflare_sender_posts_the_message():
     assert seen["auth"] == "Bearer tok"
     b = seen["body"]
     assert b["to"] == "a@x.com" and b["subject"] == "123456 is your code"
-    assert b["from"] == {"address": "signin@sportspicks.cc", "name": "Friendly Wager"}
+    assert b["from"] == {"address": "signin@sportspicks.cc", "name": "Pick'ems"}
     assert b["text"].startswith("Your code is 123456") and "&lt;ok&gt;" in b["html"] and "<br>" in b["html"]
 
 

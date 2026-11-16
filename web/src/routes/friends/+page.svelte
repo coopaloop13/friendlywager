@@ -1,5 +1,10 @@
 <script lang="ts">
 	import { gql } from '#lib/gql.js';
+	import Invite from '#lib/Invite.svelte';
+	import { reportHref } from '#lib/site.js';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
 
 	type U = { id: string; handle: string };
 	let friends = $state<U[]>([]);
@@ -63,6 +68,8 @@
 	});
 </script>
 
+<svelte:head><title>Friends · Pick'ems</title></svelte:head>
+
 <h1>Friends</h1>
 <form onsubmit={add}>
 	<label>Add by handle
@@ -115,10 +122,23 @@
 		{/each}
 	</ul>
 {:else}
-	<p>No friends yet. Add someone by handle.</p>
+	<p>No friends yet. Add someone by handle, or send them your link.</p>
 {/if}
 
+{#if data.user}
+	<h2>Invite</h2>
+	<p>Your link adds you in one tap, even if they haven't signed up yet.</p>
+	<Invite handle={data.user.handle} />
+{/if}
+
+<p class="report">Someone being a problem? Block them above, or <a href={reportHref}>report them</a>.</p>
+
 <style>
+	.report {
+		margin-top: 2rem;
+		font-size: 0.85rem;
+		color: var(--muted);
+	}
 	ul {
 		list-style: none;
 		padding: 0;

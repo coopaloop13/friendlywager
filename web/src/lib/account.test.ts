@@ -28,3 +28,18 @@ it('forget() tolerates unusable storage', () => {
 	expect(() => forget()).not.toThrow();
 	vi.unstubAllGlobals();
 });
+
+it('invites survive unusable storage as "no invite"', async () => {
+	const { rememberInvite, takeInvite } = await import('./account');
+	vi.stubGlobal('sessionStorage', {
+		setItem() {
+			throw new Error('denied');
+		},
+		getItem() {
+			throw new Error('denied');
+		}
+	});
+	expect(() => rememberInvite('maria')).not.toThrow();
+	expect(takeInvite()).toBeNull();
+	vi.unstubAllGlobals();
+});

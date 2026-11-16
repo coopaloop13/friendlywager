@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { gql } from '#lib/gql.js';
 	import { CHANGE_HANDLE, DELETE_ACCOUNT, forget } from '#lib/account.js';
+	import { reportHref, SUPPORT } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -39,7 +40,7 @@
 	}
 </script>
 
-<svelte:head><title>Settings</title></svelte:head>
+<svelte:head><title>Settings · Pick'ems</title></svelte:head>
 
 <h1>Settings</h1>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -76,7 +77,18 @@
 	</form>
 {/if}
 
+<h2>About</h2>
+<p>
+	<a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href={reportHref}>Report a user</a> ·
+	<a href="mailto:{SUPPORT}">Contact</a>
+</p>
+<p class="fine">Pick'ems is free and for fun. No money, no prizes, no betting.</p>
+
 <style>
+	.fine {
+		font-size: 0.85rem;
+		color: var(--muted);
+	}
 	h2 {
 		margin-top: 1.75rem;
 	}

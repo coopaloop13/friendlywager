@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { gql, GqlError } from '#lib/gql.js';
-	import { REQUEST_CODE, VERIFY_CODE } from '#lib/account.js';
+	import { REQUEST_CODE, VERIFY_CODE, takeInvite } from '#lib/account.js';
 
 	let step = $state<'email' | 'code' | 'handle'>('email');
 	let email = $state('');
@@ -29,7 +29,8 @@
 		try {
 			await gql(VERIFY_CODE, { email, code, handle: step === 'handle' ? handle : null });
 			await invalidateAll();
-			await goto('/');
+			const invite = takeInvite();
+			await goto(invite ? `/add/${invite}` : '/');
 		} catch (err) {
 			// right code, new email: the same code finishes sign-up once a handle comes with it
 			if (err instanceof GqlError && err.code === 'HANDLE_REQUIRED') step = 'handle';
@@ -38,7 +39,7 @@
 	}
 </script>
 
-<svelte:head><title>Sign in</title></svelte:head>
+<svelte:head><title>Sign in · Pick'ems</title></svelte:head>
 
 {#if step === 'email'}
 	<h1>Sign in</h1>
@@ -73,11 +74,17 @@
 			<input autocapitalize="none" autocorrect="off" autocomplete="username" spellcheck="false" minlength="3" maxlength="20" required bind:value={handle} />
 		</label>
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
+		<p class="fine">By creating an account you agree to the <a href="/terms">terms</a> and <a href="/privacy">privacy policy</a>, and confirm you are 13 or older.</p>
 		<button>Create account</button>
 	</form>
 {/if}
 
 <style>
+	.fine {
+		font-size: 0.85rem;
+		color: var(--muted);
+		margin: 0;
+	}
 	.link {
 		background: none;
 		border: none;

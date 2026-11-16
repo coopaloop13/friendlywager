@@ -137,3 +137,14 @@ async def test_introspection_is_off_in_production_only(client, session, clock):
         body = (await prod.post("/graphql", json={"query": q})).json()
         assert "errors" in body and not body.get("data")
         assert (await prod.post("/graphql", json={"query": "{ me { id } }"})).json() == {"data": {"me": None}}
+
+
+async def test_home_page_query_and_default_sender_name(client):
+    # web/src/routes/+page.svelte: the week plus a friend count for the "invite a friend" prompt
+    a, *_ = await two(client)
+    q = ("query($l: League!) { currentWeek(league: $l) { league season seasonType week games { "
+         "id homeName homeAbbr awayName awayAbbr homeLogo awayLogo homeRank awayRank homeRecord awayRecord "
+         "kickoffAt status homeScore awayScore spread locked myPick { home away } } } friends { id } }")
+    _, r = await gql(client, q, {"l": "NFL"}, a)
+    assert r == {"data": {"currentWeek": None, "friends": []}}
+    assert Settings(database_url="x", session_secret="s" * 32, sync_secret="s" * 16).email_from_name == "Pick'ems"

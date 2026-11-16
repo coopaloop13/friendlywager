@@ -16,3 +16,25 @@ export function forget() {
 		// storage unusable: nothing was cached either
 	}
 }
+
+const HANDLE = /^[a-z0-9_]{3,20}$/;
+
+/** Who invited a logged-out visitor (from /add/<handle>), kept for this tab until they have signed in. */
+export function rememberInvite(raw: string) {
+	const handle = raw.toLowerCase();
+	try {
+		if (HANDLE.test(handle)) sessionStorage.setItem('invite', handle);
+	} catch {
+		// no storage: they land on the home page after sign-in and add the friend by handle
+	}
+}
+
+export function takeInvite(): string | null {
+	try {
+		const handle = sessionStorage.getItem('invite');
+		sessionStorage.removeItem('invite');
+		return handle;
+	} catch {
+		return null;
+	}
+}
