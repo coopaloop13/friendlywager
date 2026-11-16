@@ -1,10 +1,18 @@
 <script lang="ts">
 	import favicon from '#lib/assets/favicon.svg';
+	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import LoadingOverlay from '#lib/LoadingOverlay.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children, data }: LayoutProps = $props();
+
+	// keep asking while the API is down; a cold start takes a couple of minutes
+	$effect(() => {
+		if (!data.unavailable) return;
+		const t = setInterval(invalidateAll, 10_000);
+		return () => clearInterval(t);
+	});
 </script>
 
 <svelte:head>
@@ -17,7 +25,15 @@
 		{#if data.user}<span class="me">@{data.user.handle}</span>{/if}
 	</header>
 
-	<main class:nav={data.user}>{@render children()}</main>
+	<main class:nav={data.user}>
+		{#if data.unavailable}
+			<h1>Timeout on the field</h1>
+			<p role="status">We can't reach the server right now. It may be warming up, which takes a couple of minutes. This page retries on its own.</p>
+			<button onclick={invalidateAll}>Try again</button>
+		{:else}
+			{@render children()}
+		{/if}
+	</main>
 
 	{#if data.user}
 		<nav class="tabs" aria-label="Main">

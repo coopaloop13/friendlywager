@@ -4,6 +4,20 @@ async def test_health_ok(client):
     assert r.json() == {"ok": True}
 
 
+async def test_health_503_when_a_league_sync_is_stale(client, session, clock):
+    from datetime import timedelta
+
+    from app.models import LeagueState
+
+    session.add(LeagueState(league="nfl", season=2026, season_type=2, week=6,
+                            last_synced_at=clock.now() - timedelta(minutes=29)))
+    session.add(LeagueState(league="cfb", season=2026, season_type=2, week=8,
+                            last_synced_at=clock.now() - timedelta(minutes=31)))
+    await session.flush()
+    r = await client.get("/health")
+    assert r.status_code == 503 and r.json() == {"ok": False, "stale": ["cfb"]}
+
+
 async def test_no_graphiql_when_secure(session):
     import httpx
 

@@ -1,4 +1,4 @@
-from sqlalchemy import and_, case, select
+from sqlalchemy import and_, case, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,9 +43,11 @@ async def sync_league(session: AsyncSession, client: ScoreboardClient, league: s
     """Upsert the current week (and the previous one on rollover). Never commits."""
     payload = await client.fetch(league)
     week = (payload.get("week") or {}).get("number")
-    if payload["season"]["type"] not in (2, 3) or week is None:
-        return 0  # preseason/offseason: nothing to load, leave LeagueState alone
     now = clock.now()
+    if payload["season"]["type"] not in (2, 3) or week is None:
+        # preseason/offseason: nothing to load; the week stays put, but the feed answered
+        await session.execute(update(LeagueState).where(LeagueState.league == league).values(last_synced_at=now))
+        return 0
     key, games = parse_scoreboard(league, payload)
     n = await _upsert(session, league, games, now)
 
@@ -58,12 +60,12 @@ async def sync_league(session: AsyncSession, client: ScoreboardClient, league: s
         n += await _upsert(session, league, old, now)
 
     state = insert(LeagueState).values(
-        league=league, season=key.season, season_type=key.season_type, week=key.week
+        league=league, season=key.season, season_type=key.season_type, week=key.week, last_synced_at=now
     )
     await session.execute(
         state.on_conflict_do_update(
             index_elements=["league"],
-            set_={c: state.excluded[c] for c in ("season", "season_type", "week")},
+            set_={c: state.excluded[c] for c in ("season", "season_type", "week", "last_synced_at")},
         )
     )
     return n

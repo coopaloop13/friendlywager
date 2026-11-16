@@ -124,6 +124,36 @@ async def test_internal_sync_runs(client, session):
     assert await count(session) == 1
 
 
+class BrokenFor(FakeClient):
+    def __init__(self, bad, current):
+        super().__init__(current)
+        self.bad = bad
+
+    async def fetch(self, league, key: WeekKey | None = None):
+        if league == self.bad:
+            raise RuntimeError("espn down")
+        return await super().fetch(league, key)
+
+
+async def test_one_league_failing_does_not_discard_the_other(client, session):
+    for bad, good in (("cfb", "nfl"), ("nfl", "cfb")):
+        fake = BrokenFor(bad, pl(6, ev(f"g-{good}", home_rank=1)))
+        client._transport.app.dependency_overrides[get_scoreboard_client] = lambda: fake
+        r = await client.post("/internal/sync", headers={"X-Sync-Secret": "test-sync-secret-0123456789"})
+        assert r.status_code == 502 and r.json() == {good: 1, bad: None}  # cron sees the failure
+        await session.rollback()  # only committed rows count
+        assert await session.scalar(select(Game.league).where(Game.external_id == f"g-{good}")) == good
+
+
+async def test_sync_records_last_synced_at_even_in_offseason(session, clock):
+    await sync_league(session, FakeClient(pl(6, ev("1"))), "nfl", clock)
+    assert (await session.get(LeagueState, "nfl")).last_synced_at == clock.now()
+    clock.dt = datetime.fromisoformat("2027-03-01T00:00Z")
+    await sync_league(session, FakeClient(pl(1, type=4)), "nfl", clock)
+    state = await session.get(LeagueState, "nfl", populate_existing=True)
+    assert state.last_synced_at == clock.now() and state.week == 6
+
+
 def test_empty_sync_secret_rejected():
     import pytest
     from pydantic import ValidationError

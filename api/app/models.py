@@ -40,8 +40,8 @@ class Friendship(Base):
         ),
     )
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), **UUID_PK)
-    requester_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    addressee_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    requester_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    addressee_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     accepted_at: Mapped[datetime | None] = mapped_column(TS)
@@ -108,3 +108,4 @@ class LeagueState(Base):
     season: Mapped[int] = mapped_column(SmallInteger)
     season_type: Mapped[int] = mapped_column(SmallInteger)
     week: Mapped[int] = mapped_column(SmallInteger)
+    last_synced_at: Mapped[datetime | None] = mapped_column(TS)  # last successful fetch, any season type

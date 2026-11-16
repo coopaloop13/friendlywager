@@ -16,15 +16,25 @@ export async function gql<T>(
 	query: string,
 	variables?: Record<string, unknown>,
 	f: typeof fetch = fetch,
-	{ quiet = false } = {}
+	{ quiet = false, retries = [500, 1500, 4000] }: { quiet?: boolean; retries?: number[] } = {}
 ): Promise<T> {
 	if (!quiet) pending.update((n) => n + 1);
 	try {
-		const res = await f('/graphql', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ query, variables })
-		});
+		const send = () =>
+			f('/graphql', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ query, variables })
+			});
+		let res = await send();
+		// 5xx means the proxy or a starting container, never a resolver (those answer 200 with `errors`).
+		// ponytail: mutations are retried too; every one is an upsert or safe to repeat except signUp,
+		// which would report "taken" on a retry that follows a lost success. Skip mutations if that bites.
+		for (const ms of retries) {
+			if (res.status < 500) break;
+			await new Promise((r) => setTimeout(r, ms));
+			res = await send();
+		}
 		let json;
 		try {
 			json = await res.json();

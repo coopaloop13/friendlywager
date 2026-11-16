@@ -37,3 +37,13 @@ it('reads the url without tracking it, so tab switches do not refetch me', async
 	expect(await target(p)).toBe('/');
 	expect(untrack).toHaveBeenCalled();
 });
+
+it('reports an unreachable API instead of throwing or redirecting', async () => {
+	vi.useFakeTimers();
+	const down = () => Promise.resolve(new Response('API unavailable', { status: 502 }));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const p = (load as any)({ fetch: down, url: new URL('/friends', 'http://x'), untrack: (f: () => unknown) => f() });
+	await vi.runAllTimersAsync();
+	expect(await p).toEqual({ user: null, unavailable: true });
+	vi.useRealTimers();
+});

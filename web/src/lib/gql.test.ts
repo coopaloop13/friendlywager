@@ -3,7 +3,7 @@ import { gql, GqlError } from './gql';
 
 it('throws GqlError with status message on non-JSON body', async () => {
 	const f = vi.fn().mockResolvedValue(new Response('<html>bad gateway</html>', { status: 502 }));
-	const err = await gql('{me{id}}', undefined, f).catch((e) => e);
+	const err = await gql('{me{id}}', undefined, f, { retries: [] }).catch((e) => e);
 	expect(err).toBeInstanceOf(GqlError);
 	expect((err as GqlError).message).toBe('Request failed (502)');
 });
@@ -39,4 +39,23 @@ it('remembers the last response per key and tolerates unusable storage', async (
 	expect(() => remember('x', 1)).not.toThrow();
 	expect(cached('board:1:nfl')).toBeNull();
 	vi.unstubAllGlobals();
+});
+
+it('retries 5xx responses (container cold start) and returns the first good one', async () => {
+	const f = vi
+		.fn()
+		.mockResolvedValueOnce(new Response('starting', { status: 500 }))
+		.mockResolvedValueOnce(new Response('API unavailable', { status: 502 }))
+		.mockResolvedValueOnce(Response.json({ data: { me: null } }));
+	expect(await gql('{me{id}}', undefined, f, { retries: [0, 0] })).toEqual({ me: null });
+	expect(f).toHaveBeenCalledTimes(3);
+});
+
+it('gives up after the last retry and does not retry client errors', async () => {
+	const down = vi.fn(() => Promise.resolve(new Response('starting', { status: 500 })));
+	await expect(gql('{me{id}}', undefined, down, { retries: [0, 0] })).rejects.toThrow('Request failed (500)');
+	expect(down).toHaveBeenCalledTimes(3);
+	const bad = vi.fn(() => Promise.resolve(new Response('nope', { status: 400 })));
+	await expect(gql('{me{id}}', undefined, bad, { retries: [0, 0] })).rejects.toThrow('Request failed (400)');
+	expect(bad).toHaveBeenCalledTimes(1);
 });

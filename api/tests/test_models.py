@@ -83,3 +83,10 @@ async def test_pick_score_range(session, home):
     session.add(Pick(user_id=u.id, game_id=g.id, pred_home=home, pred_away=7))
     with pytest.raises(IntegrityError):
         await session.flush()
+
+
+async def test_friendships_indexed_by_each_side(session):
+    from sqlalchemy import text
+
+    names = set(await session.scalars(text("SELECT indexname FROM pg_indexes WHERE tablename = 'friendships'")))
+    assert {"ix_friendships_requester_id", "ix_friendships_addressee_id"} <= names
