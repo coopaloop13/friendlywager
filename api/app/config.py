@@ -12,3 +12,5 @@ class Settings(BaseSettings):
     cloudflare_account_id: str | None = None
     email_from: str = "signin@sportspicks.cc"
     email_from_name: str = "Pick'ems"
+    # Firebase service account key (the whole JSON file as one string); without it reminders are only logged
+    fcm_service_account: str | None = None

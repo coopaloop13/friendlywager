@@ -10,7 +10,7 @@ from test_friends import make_user
 from test_picks import SAVE, mkgame, now  # noqa: F401  (now is a fixture)
 from test_sync import FakeClient, pl
 
-# what the app shell will send once push is wired to a Firebase project
+# the exact strings web/src/lib/push.ts sends
 REGISTER = "mutation($token: String!, $platform: String!) { registerDevice(token: $token, platform: $platform) }"
 UNREGISTER = "mutation($token: String!) { unregisterDevice(token: $token) }"
 

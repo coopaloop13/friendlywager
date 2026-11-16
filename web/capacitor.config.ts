@@ -5,7 +5,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
 	appId: 'cc.sportspicks.app',
 	appName: "Pick'ems",
-	webDir: 'build'
+	webDir: 'build',
+	plugins: { FirebaseMessaging: { presentationOptions: ['alert', 'sound'] } },
+	// avoids a Swift package name clash between the Firebase plugin and the Firebase SDK
+	experimental: { ios: { spm: { packageOptions: { '@capacitor-firebase/messaging': { symlink: true } } } } }
 };
 
 export default config;

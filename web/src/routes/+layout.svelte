@@ -3,9 +3,15 @@
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import LoadingOverlay from '#lib/LoadingOverlay.svelte';
+	import { enablePush } from '#lib/push.js';
 	import type { LayoutProps } from './$types';
 
 	let { children, data }: LayoutProps = $props();
+
+	// store apps: once someone is signed in, this phone gets their "picks lock soon" reminders
+	$effect(() => {
+		if (data.user) enablePush();
+	});
 
 	// keep asking while the API is down; a cold start takes a couple of minutes
 	$effect(() => {

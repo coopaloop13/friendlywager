@@ -33,7 +33,9 @@
 		"#lib/*": "./src/lib/*"
 	},
 	"dependencies": {
+		"@capacitor-firebase/messaging": "^8.6.0",
 		"@capacitor/core": "^8.6.2",
-		"@capacitor/preferences": "^8.0.1"
+		"@capacitor/preferences": "^8.0.1",
+		"firebase": "^12.19.0"
 	}
 }

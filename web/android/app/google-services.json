@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723138831696",
+    "project_id": "sportspicks-1c8fe",
+    "storage_bucket": "sportspicks-1c8fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723138831696:android:c8cfd958409a5334acb855",
+        "android_client_info": {
+          "package_name": "cc.sportspicks.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoN5UmRCtPyu-unyOn38yykWEAYMxVLBg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

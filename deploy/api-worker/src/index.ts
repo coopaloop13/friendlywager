@@ -8,6 +8,7 @@ declare global {
 		SYNC_SECRET: string;
 		EMAIL_API_TOKEN: string;
 		CLOUDFLARE_ACCOUNT_ID: string;
+		FCM_SERVICE_ACCOUNT?: string;
 	}
 }
 
@@ -24,6 +25,7 @@ export class Api extends Container<Env> {
 			SYNC_SECRET: env.SYNC_SECRET,
 			EMAIL_API_TOKEN: env.EMAIL_API_TOKEN,
 			CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
+			FCM_SERVICE_ACCOUNT: env.FCM_SERVICE_ACCOUNT ?? "", // unset: reminders are only logged
 			COOKIE_SECURE: "true",
 		};
 	}

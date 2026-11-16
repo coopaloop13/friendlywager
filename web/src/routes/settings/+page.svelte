@@ -3,6 +3,7 @@
 	import { gql } from '#lib/gql.js';
 	import { CHANGE_HANDLE, DELETE_ACCOUNT, forget } from '#lib/account.js';
 	import { signedOut } from '#lib/native.js';
+	import { disablePush } from '#lib/push.js';
 	import { reportHref, SUPPORT } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -31,6 +32,7 @@
 	async function leave(mutation: string) {
 		error = info = '';
 		try {
+			await disablePush(); // while still signed in: the server only drops a device for its owner
 			await gql(mutation);
 			forget();
 			await signedOut();
