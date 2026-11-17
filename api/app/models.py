@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, SmallInteger, String, func, text
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, SmallInteger, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import DateTime
@@ -26,6 +26,7 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String)  # legacy; sign-in is by emailed code
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     reminded_at: Mapped[datetime | None] = mapped_column(TS)  # last "picks lock soon" push
+    result_pushes: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))  # off: muted in Settings
 
 
 class DeviceToken(Base):

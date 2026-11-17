@@ -5,7 +5,7 @@ from sqlalchemy import update
 from app.models import Game
 from app.notify import get_notifier
 from app.reminders import send_results
-from test_auth import gql
+from test_auth import code, gql
 from test_friends import PENDING, RESPOND, SEND, make_user
 from test_picks import SAVE, mkgame, now  # noqa: F401  (now is a fixture)
 from test_reminders import REGISTER, FakeNotifier
@@ -128,3 +128,37 @@ async def test_the_sync_cron_sends_results_and_survives_a_push_failure(client, s
     app.dependency_overrides[get_notifier] = lambda: Broken()
     r = await client.post("/internal/sync", headers=secret)
     assert r.status_code == 200 and r.json() == {"nfl": 0, "cfb": 0}  # scores still sync
+
+
+# the exact strings web/src/lib/account.ts sends
+RESULT_PUSHES = "{ resultPushes }"
+SET_RESULT_PUSHES = "mutation($on: Boolean!) { setResultPushes(on: $on) }"
+
+
+async def test_a_player_can_mute_result_pushes_and_turn_them_back_on(client, session, clock, now):
+    josh, maria = await player(client, "josh"), await player(client, "maria")
+    await befriend(client, josh, "maria", maria)
+    assert (await gql(client, RESULT_PUSHES, headers=josh))[1]["data"]["resultPushes"] is True  # on until muted
+    _, r = await gql(client, SET_RESULT_PUSHES, {"on": False}, josh)
+    assert r["data"]["setResultPushes"] is False
+    assert (await gql(client, RESULT_PUSHES, headers=josh))[1]["data"]["resultPushes"] is False
+    assert (await gql(client, RESULT_PUSHES, headers=maria))[1]["data"]["resultPushes"] is True
+
+    g = await mkgame(session, now + timedelta(hours=1))
+    await pick(client, josh, g, 24, 17)
+    await pick(client, maria, g, 20, 17)
+    await final(session, g, 24, 17)
+    n, sent = await run(session, clock)
+    assert n == 1 and list(sent) == ["tok-maria"]  # his friend still hears how she did against him
+
+    await gql(client, SET_RESULT_PUSHES, {"on": True}, josh)
+    g2 = await mkgame(session, now + timedelta(hours=1), ext="2")
+    await pick(client, josh, g2, 24, 17)
+    await final(session, g2, 24, 17)
+    _, sent = await run(session, clock)
+    assert list(sent) == ["tok-josh"]
+
+
+async def test_the_result_push_setting_needs_login(client):
+    assert code((await gql(client, RESULT_PUSHES))[1]) == "UNAUTHENTICATED"
+    assert code((await gql(client, SET_RESULT_PUSHES, {"on": False}))[1]) == "UNAUTHENTICATED"

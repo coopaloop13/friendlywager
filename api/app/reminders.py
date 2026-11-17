@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import timedelta
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +29,15 @@ async def register_device(session: AsyncSession, user_id: uuid.UUID, token: str,
 
 async def unregister_device(session: AsyncSession, user_id: uuid.UUID, token: str) -> None:
     await session.execute(delete(DeviceToken).where(DeviceToken.token == token, DeviceToken.user_id == user_id))
+
+
+async def wants_results(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    return bool(await session.scalar(select(User.result_pushes).where(User.id == user_id)))
+
+
+async def set_result_pushes(session: AsyncSession, user_id: uuid.UUID, on: bool) -> bool:
+    await session.execute(update(User).where(User.id == user_id).values(result_pushes=on))
+    return on
 
 
 async def send_reminders(session: AsyncSession, notifier: Notifier, clock: Clock) -> int:
@@ -88,7 +97,8 @@ async def send_results(session: AsyncSession, notifier: Notifier, clock: Clock) 
     if not players:
         return 0
     tokens: dict[uuid.UUID, list[str]] = {}
-    for d in await session.scalars(select(DeviceToken).where(DeviceToken.user_id.in_(players))):
+    listening = select(User.id).where(User.id.in_(players), User.result_pushes)  # not muted in Settings
+    for d in await session.scalars(select(DeviceToken).where(DeviceToken.user_id.in_(listening))):
         tokens.setdefault(d.user_id, []).append(d.token)
     friends: dict[uuid.UUID, set[uuid.UUID]] = {}
     pairs = await session.execute(
@@ -104,7 +114,6 @@ async def send_results(session: AsyncSession, notifier: Notifier, clock: Clock) 
     handles = dict((await session.execute(select(User.id, User.handle).where(User.id.in_(everyone)))).all())
 
     sent = 0
-    # ponytail: every final game, no opt-out; add a setting when someone asks to mute these
     for user, devices in tokens.items():
         mine = [g for g in finals if user in picks.get(g.id, {})]
         lines = []

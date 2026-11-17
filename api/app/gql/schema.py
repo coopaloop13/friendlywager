@@ -264,6 +264,11 @@ class Query:
         return _to_user(u) if u else None
 
     @strawberry.field
+    async def result_pushes(self, info: Info[Context, None]) -> bool:
+        ctx = info.context
+        return await reminders.wants_results(ctx.session, require_user(ctx))
+
+    @strawberry.field
     async def friends(self, info: Info[Context, None]) -> list[User]:
         ctx = info.context
         return [_to_user(u) for u in await friends.list_friends(ctx.session, require_user(ctx))]
@@ -426,6 +431,13 @@ class Mutation:
         await reminders.unregister_device(ctx.session, require_user(ctx), token)
         await ctx.session.commit()
         return True
+
+    @strawberry.mutation
+    async def set_result_pushes(self, info: Info[Context, None], on: bool) -> bool:
+        ctx = info.context
+        await reminders.set_result_pushes(ctx.session, require_user(ctx), on)
+        await ctx.session.commit()
+        return on
 
     @strawberry.mutation
     async def save_pick(self, info: Info[Context, None], game_id: strawberry.ID, home: int, away: int) -> PickView:

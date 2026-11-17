@@ -2,7 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { gql } from '#lib/gql.js';
 	import { getLook, LOOKS, setLook, type Look } from '#lib/look.js';
-	import { CHANGE_HANDLE, DELETE_ACCOUNT, forget } from '#lib/account.js';
+	import { CHANGE_HANDLE, DELETE_ACCOUNT, forget, RESULT_PUSHES, SET_RESULT_PUSHES } from '#lib/account.js';
 	import { signedOut } from '#lib/native.js';
 	import { disablePush } from '#lib/push.js';
 	import { reportHref, SUPPORT } from '#lib/site.js';
@@ -16,6 +16,24 @@
 	let confirming = $state(false);
 	let typed = $state('');
 	let look = $state(getLook());
+	let results = $state<boolean | null>(null); // unknown until the server answers
+
+	$effect(() => {
+		gql<{ resultPushes: boolean }>(RESULT_PUSHES, undefined, fetch, { quiet: true })
+			.then((d) => (results = d.resultPushes))
+			.catch((e) => (error = e.message));
+	});
+
+	async function setResults(on: boolean) {
+		error = info = '';
+		try {
+			await gql(SET_RESULT_PUSHES, { on }, fetch, { quiet: true });
+			results = on;
+		} catch (err) {
+			results = !on; // put the box back
+			error = (err as Error).message;
+		}
+	}
 
 	async function rename(e: SubmitEvent) {
 		e.preventDefault();
@@ -69,6 +87,18 @@
 	{/each}
 </div>
 
+<h2>Notifications</h2>
+<label class="check">
+	<input
+		type="checkbox"
+		checked={results ?? true}
+		disabled={results === null}
+		onchange={(e) => setResults(e.currentTarget.checked)}
+	/>
+	<span>Tell me when a game ends and how I did against my friends</span>
+</label>
+<p class="fine">Sent to phones with the app installed. Reminders that picks are about to lock are not affected.</p>
+
 <h2>Session</h2>
 <button onclick={() => leave('mutation { logOut }')}>Log out</button>
 
@@ -109,6 +139,20 @@
 	.danger {
 		background: var(--bad);
 		color: var(--on-bad);
+	}
+	.check {
+		flex-direction: row;
+		align-items: center;
+		gap: 0.6rem;
+		min-height: 44px;
+		font-weight: 400;
+	}
+	.check input {
+		flex: none;
+		width: 1.4rem;
+		height: 1.4rem;
+		padding: 0;
+		accent-color: var(--sel);
 	}
 	.looks {
 		display: flex;
