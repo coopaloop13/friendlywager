@@ -98,9 +98,8 @@
 		padding: 0.6rem 0;
 		margin-right: 1rem;
 		min-height: 44px;
-		color: var(--turf);
+		color: var(--link);
 		text-transform: none;
-		letter-spacing: 0;
 		font-family: inherit;
 		text-decoration: underline;
 	}

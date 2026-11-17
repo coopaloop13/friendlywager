@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { gql } from '#lib/gql.js';
+	import { getLook, LOOKS, setLook, type Look } from '#lib/look.js';
 	import { CHANGE_HANDLE, DELETE_ACCOUNT, forget } from '#lib/account.js';
 	import { signedOut } from '#lib/native.js';
 	import { disablePush } from '#lib/push.js';
@@ -14,6 +15,7 @@
 	let info = $state('');
 	let confirming = $state(false);
 	let typed = $state('');
+	let look = $state(getLook());
 
 	async function rename(e: SubmitEvent) {
 		e.preventDefault();
@@ -59,6 +61,14 @@
 	<button>Change handle</button>
 </form>
 
+<h2>Look</h2>
+<p>How the app looks on this device.</p>
+<div class="looks" role="group" aria-label="Look">
+	{#each Object.entries(LOOKS) as [id, name] (id)}
+		<button aria-pressed={look === id} onclick={() => setLook((look = id as Look))}>{name}</button>
+	{/each}
+</div>
+
 <h2>Session</h2>
 <button onclick={() => leave('mutation { logOut }')}>Log out</button>
 
@@ -97,9 +107,24 @@
 		margin-top: 1.75rem;
 	}
 	.danger {
-		background: var(--red);
-		border-color: #8f0b20;
-		box-shadow: 0 3px 0 #8f0b20;
-		color: #fff;
+		background: var(--bad);
+		color: var(--on-bad);
+	}
+	.looks {
+		display: flex;
+		gap: 0.5rem;
+	}
+	.looks button {
+		flex: 1;
+		min-height: 44px;
+		border-color: var(--rule);
+		background: var(--surface);
+		color: var(--muted);
+		box-shadow: none;
+	}
+	.looks button[aria-pressed='true'] {
+		border-color: var(--sel);
+		background: var(--sel);
+		color: var(--on-sel);
 	}
 </style>

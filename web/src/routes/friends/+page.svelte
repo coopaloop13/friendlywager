@@ -149,7 +149,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		min-height: 44px;
-		border-bottom: 2px dashed var(--line);
+		border-bottom: 2px dotted var(--rule);
 	}
 	li a {
 		flex: 1;
@@ -163,9 +163,9 @@
 		min-height: 44px;
 	}
 	.sec {
-		background: var(--chalk);
-		border-color: var(--line);
-		box-shadow: 0 3px 0 var(--line);
+		background: var(--surface);
+		border-color: var(--rule);
+		box-shadow: 0 3px 0 var(--rule);
 		color: var(--muted);
 	}
 </style>

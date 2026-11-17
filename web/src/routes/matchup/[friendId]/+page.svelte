@@ -148,7 +148,8 @@
 <style>
 	.weeks {
 		font-family: var(--display);
-		text-transform: uppercase;
+		font-weight: 800;
+		text-transform: var(--caps);
 		font-size: 1.2rem;
 		display: flex;
 		align-items: center;
@@ -160,19 +161,18 @@
 		min-height: 44px;
 	}
 	.totals {
-		font-family: var(--display);
-		font-size: 1.6rem;
+		font-family: var(--num);
+		font-size: 1.5rem;
 		text-align: center;
-		background: #111;
-		color: var(--gold);
-		border-radius: 12px;
-		padding: 0.5rem;
+		background: var(--inv);
+		color: var(--on-inv);
+		border-radius: var(--radius);
+		padding: 0.6rem;
 	}
 	.card {
-		background: var(--chalk);
+		background: var(--surface);
 		border: 2px solid var(--line);
-		border-left: 6px solid var(--turf);
-		border-radius: 14px;
+		border-radius: var(--radius);
 		padding: 0.75rem;
 		margin-bottom: 0.75rem;
 	}
@@ -185,22 +185,23 @@
 	}
 	.pick {
 		padding: 0.25rem 0.5rem;
-		border-radius: 8px;
+		border-radius: var(--radius-s);
 		border: 2px solid transparent;
 	}
 	.win {
-		border-color: var(--gold);
-		background: color-mix(in srgb, var(--gold) 18%, transparent);
+		border-color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 18%, transparent);
 	}
 	.win::after {
 		content: 'Winner';
 		float: right;
 		font-family: var(--display);
-		text-transform: uppercase;
+		font-weight: 700;
+		text-transform: var(--caps);
 		font-size: 0.75rem;
-		background: var(--gold);
-		color: #111;
-		border-radius: 6px;
-		padding: 0 0.4rem;
+		background: var(--accent);
+		color: var(--on-accent);
+		border-radius: var(--pill);
+		padding: 0 0.5rem;
 	}
 </style>

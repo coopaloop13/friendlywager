@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { navigating } from '$app/state';
 	import { pending } from '#lib/gql.js';
-	import Football from '#lib/Football.svelte';
+	import Spinner from '#lib/Spinner.svelte';
 
 	const LINES = ['Hiking the ball…', 'Checking the replay…', 'Huddling up…', 'Reading the defense…', 'Moving the chains…'];
 
@@ -23,7 +23,7 @@
 {#if show}
 	<div class="overlay" role="alertdialog" aria-modal="true" aria-busy="true" aria-label="Loading">
 		<div class="box">
-			<Football />
+			<Spinner />
 			<p role="status">{line}</p>
 		</div>
 	</div>
@@ -36,14 +36,14 @@
 		z-index: 100;
 		display: grid;
 		place-items: center;
-		background: rgb(10 30 18 / 0.55);
+		background: rgb(0 0 0 / 0.45);
 		backdrop-filter: blur(2px);
 		animation: fade 0.15s ease-out;
 	}
 	.box {
-		background: var(--chalk);
-		border: 3px solid var(--gold);
-		border-radius: 16px;
+		background: var(--surface);
+		border: 2px solid var(--line);
+		border-radius: var(--radius);
 		padding: 1.25rem 2rem;
 		text-align: center;
 		box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
@@ -51,7 +51,7 @@
 	p {
 		margin: 0.5rem 0 0;
 		font-family: var(--display);
-		color: var(--turf-dark);
+		font-weight: 700;
 	}
 	@keyframes fade {
 		from {

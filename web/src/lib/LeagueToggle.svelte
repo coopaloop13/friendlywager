@@ -11,8 +11,8 @@
 	.toggle {
 		display: flex;
 		margin-bottom: 1rem;
-		background: #111;
-		border-radius: 12px;
+		background: var(--well);
+		border-radius: var(--pill);
 		padding: 4px;
 	}
 	a {
@@ -21,14 +21,14 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-radius: 9px;
+		border-radius: var(--pill);
 		text-decoration: none;
-		color: #bbb;
+		color: var(--muted);
 		font-family: var(--display);
-		letter-spacing: 0.08em;
+		font-weight: 700;
 	}
 	a[aria-current] {
-		background: var(--gold);
-		color: var(--ink);
+		background: var(--sel);
+		color: var(--on-sel);
 	}
 </style>

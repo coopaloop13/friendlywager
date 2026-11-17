@@ -127,40 +127,31 @@
 	.board {
 		font-family: var(--display);
 		text-align: center;
-		background: #111;
-		color: var(--gold);
-		border-radius: 12px;
-		padding: 0.5rem;
+		background: var(--inv);
+		color: var(--on-inv);
+		border-radius: var(--radius);
+		padding: 0.75rem;
 		margin-bottom: 0.75rem;
 	}
 	.board .big {
+		font-family: var(--num);
 		font-size: 2.2rem;
+		font-weight: 800;
+		line-height: 1.2;
 	}
 	.card {
-		background: var(--chalk);
+		background: var(--surface);
 		border: 2px solid var(--line);
-		border-left: 6px solid var(--line);
-		border-radius: 14px;
+		border-radius: var(--radius);
 		padding: 0.75rem;
 		margin-bottom: 0.75rem;
 	}
 	.card h2 {
-		font-family: var(--display);
-		text-transform: uppercase;
 		font-size: 1rem;
 		margin: 0;
 	}
 	.card p {
 		margin: 0.25rem 0;
-	}
-	[data-lead='lead'] {
-		border-left-color: var(--turf);
-	}
-	[data-lead='trail'] {
-		border-left-color: var(--red);
-	}
-	[data-lead='even'] {
-		border-left-color: var(--line);
 	}
 	summary {
 		list-style: none;
@@ -175,8 +166,9 @@
 		display: none;
 	}
 	summary .big {
-		font-family: var(--display);
-		font-size: 1.4rem;
+		font-family: var(--num);
+		font-size: 1.3rem;
+		font-weight: 800;
 		margin-left: auto;
 	}
 	.this-week {
@@ -185,18 +177,18 @@
 		font-size: 0.85rem;
 	}
 	.pos {
-		color: var(--turf);
+		color: var(--good);
 	}
 	.neg {
-		color: var(--red);
+		color: var(--bad);
 	}
 	.chip,
 	.weeks li {
 		font-family: var(--display);
 		font-size: 0.8rem;
-		border-radius: 6px;
-		padding: 0 0.4rem;
-		border: 1px solid var(--line);
+		border-radius: var(--pill);
+		padding: 0 0.5rem;
+		border: 1px solid var(--rule);
 	}
 	.weeks {
 		list-style: none;
@@ -207,12 +199,12 @@
 		gap: 0.35rem;
 	}
 	.weeks .W {
-		background: var(--gold);
-		color: #111;
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--on-accent);
 	}
 	.weeks .L {
-		background: var(--chalk);
-		color: var(--red);
+		color: var(--bad);
 	}
 	.weeks .T {
 		color: var(--muted);
@@ -229,14 +221,14 @@
 	.sort button {
 		flex: 1;
 		min-height: 44px;
-		border-radius: 9px;
-		border: 2px solid #111;
-		background: var(--chalk);
-		font-family: var(--display);
-		letter-spacing: 0.08em;
+		border-color: var(--rule);
+		background: var(--surface);
+		color: var(--muted);
+		box-shadow: none;
 	}
 	.sort button[aria-pressed='true'] {
-		background: var(--gold);
-		color: var(--ink);
+		border-color: var(--sel);
+		background: var(--sel);
+		color: var(--on-sel);
 	}
 </style>

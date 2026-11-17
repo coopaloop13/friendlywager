@@ -79,18 +79,16 @@
 	.invite {
 		margin-bottom: 1rem;
 		padding: 0.9rem 1rem;
-		background: var(--chalk);
+		background: var(--surface);
 		border: 2px solid var(--line);
-		border-left: 6px solid var(--gold);
-		border-radius: 12px;
+		border-radius: var(--radius);
 	}
 	.invite p {
 		margin: 0 0 0.75rem;
 	}
 	.sub {
 		color: var(--muted);
-		font-family: var(--display);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		font-size: 0.85rem;
+		text-transform: var(--caps);
 	}
 </style>

@@ -36,6 +36,6 @@
 	.abbr {
 		text-decoration: none;
 		font-family: var(--display);
-		letter-spacing: 0.05em;
+		font-weight: 700;
 	}
 </style>
