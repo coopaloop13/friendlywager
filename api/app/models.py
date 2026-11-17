@@ -118,6 +118,7 @@ class Game(Base):
     home_score: Mapped[int | None] = mapped_column(SmallInteger)
     away_score: Mapped[int | None] = mapped_column(SmallInteger)
     spread_text: Mapped[str | None] = mapped_column(String)
+    result_pushed_at: Mapped[datetime | None] = mapped_column(TS)  # when friends were told the final score
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
 

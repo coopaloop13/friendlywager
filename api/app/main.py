@@ -14,7 +14,7 @@ from app.db import get_session
 from app.gql.schema import make_graphql_router
 from app.models import LeagueState
 from app.notify import Notifier, get_notifier
-from app.reminders import send_reminders
+from app.reminders import send_reminders, send_results
 from app.sync.espn import ScoreboardClient, get_scoreboard_client
 from app.sync.service import sync_league
 
@@ -78,6 +78,12 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
         except Exception:
             await session.rollback()
             log.exception("reminders failed")
+        try:  # after the scores are committed: tell friends how the games that just ended went
+            await send_results(session, notifier, request.app.state.clock)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            log.exception("result pushes failed")
         return JSONResponse(counts, 502) if None in counts.values() else counts
 
     # no public GraphiQL in prod
