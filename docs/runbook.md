@@ -2,7 +2,7 @@
 
 ## Is it healthy?
 
-`GET https://api.sportspicks.cc/health` answers 200 `{"ok": true}` only when Postgres answers and every league's
+`GET https://api.pickem.cc/health` answers 200 `{"ok": true}` only when Postgres answers and every league's
 feed was fetched in the last 30 minutes. Otherwise it answers 503 with `{"ok": false, "stale": ["cfb"]}`.
 Point an uptime monitor at it.
 

@@ -3,7 +3,11 @@
 	"name": "fw-api",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-10-19",
-	"routes": [{ "pattern": "api.sportspicks.cc", "custom_domain": true }],
+	"routes": [
+		{ "pattern": "api.pickem.cc", "custom_domain": true },
+		// Store app builds from before the move to pickem.cc call this host. It must keep serving, not redirect.
+		{ "pattern": "api.sportspicks.cc", "custom_domain": true }
+	],
 	"triggers": { "crons": ["*/5 * * * *"] },
 	"observability": { "enabled": true },
 	// Per client IP, per Cloudflare location, approximate. A page load is 1-3 requests.

@@ -28,7 +28,7 @@ _HANDLE = re.compile(r"^[a-z0-9_]{3,20}$")
 # Checked at sign-up and rename only; nobody who already has a handle is affected.
 _RESERVED = frozenset(
     "admin administrator anonymous deleted everyone friendlywager help here mod moderator null official "
-    "pickems root sportspicks staff support system undefined".split()
+    "pickem pickems root sportspicks staff support system undefined".split()
 )
 _BANNED = ("cunt", "faggot", "fuck", "hitler", "nazi", "nigg", "retard", "shit")
 

@@ -26,10 +26,10 @@ it('on the web, talks to the same-origin proxy and leaves auth to the cookie', a
 
 it('in the app, talks to the API directly with the stored token', async () => {
 	state.native = true;
-	expect(await endpoint()).toEqual({ url: 'https://api.sportspicks.cc/graphql', headers: {} });
+	expect(await endpoint()).toEqual({ url: 'https://api.pickem.cc/graphql', headers: {} });
 	await signedIn('tok');
 	expect(await endpoint()).toEqual({
-		url: 'https://api.sportspicks.cc/graphql',
+		url: 'https://api.pickem.cc/graphql',
 		headers: { authorization: 'Bearer tok' }
 	});
 	await signedOut();
@@ -42,6 +42,6 @@ it('gql() sends requests where endpoint() says', async () => {
 	const f = vi.fn().mockResolvedValue(Response.json({ data: { ok: 1 } }));
 	await gql('{ok}', undefined, f);
 	const [url, init] = f.mock.calls[0];
-	expect(url).toBe('https://api.sportspicks.cc/graphql');
+	expect(url).toBe('https://api.pickem.cc/graphql');
 	expect(init.headers).toEqual({ 'content-type': 'application/json', authorization: 'Bearer tok' });
 });

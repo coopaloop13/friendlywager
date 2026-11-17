@@ -13,7 +13,7 @@ def settings(**kw):
 
 
 def cf(handler):
-    return CloudflareEmailSender("tok", "acct", "signin@sportspicks.cc", "Pick'ems", httpx.MockTransport(handler))
+    return CloudflareEmailSender("tok", "acct", "signin@pickem.cc", "Pick'ems", httpx.MockTransport(handler))
 
 
 async def test_cloudflare_sender_posts_the_message():
@@ -28,7 +28,7 @@ async def test_cloudflare_sender_posts_the_message():
     assert seen["auth"] == "Bearer tok"
     b = seen["body"]
     assert b["to"] == "a@x.com" and b["subject"] == "123456 is your code"
-    assert b["from"] == {"address": "signin@sportspicks.cc", "name": "Pick'ems"}
+    assert b["from"] == {"address": "signin@pickem.cc", "name": "Pick'ems"}
     assert b["text"].startswith("Your code is 123456") and "&lt;ok&gt;" in b["html"] and "<br>" in b["html"]
 
 
@@ -56,4 +56,4 @@ async def test_permanent_bounce_tells_the_user_the_address_is_bad():
 def test_sender_is_cloudflare_only_when_configured():
     assert isinstance(sender_for(settings()), LogEmailSender)
     s = sender_for(settings(email_api_token="tok", cloudflare_account_id="acct"))
-    assert isinstance(s, CloudflareEmailSender) and s.from_address == "signin@sportspicks.cc"
+    assert isinstance(s, CloudflareEmailSender) and s.from_address == "signin@pickem.cc"

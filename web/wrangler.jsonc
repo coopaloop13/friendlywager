@@ -5,7 +5,12 @@
 	"compatibility_date": "2026-10-19",
 	"compatibility_flags": ["nodejs_compat"],
 	"assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" },
-	"routes": [{ "pattern": "sportspicks.cc", "custom_domain": true }],
-	"vars": { "API_URL": "https://api.sportspicks.cc" },
+	"routes": [
+		{ "pattern": "pickem.cc", "custom_domain": true },
+		// Forwarded to pickem.cc in src/hooks.server.ts.
+		{ "pattern": "www.pickem.cc", "custom_domain": true },
+		{ "pattern": "sportspicks.cc", "custom_domain": true }
+	],
+	"vars": { "API_URL": "https://api.pickem.cc" },
 	"observability": { "enabled": true }
 }
