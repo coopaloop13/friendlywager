@@ -91,6 +91,20 @@ async def test_kickoff_lock_is_one_way(session, clock):
     assert g.kickoff_at <= clock.now()  # still locked
 
 
+async def test_feed_kickoff_before_the_season_is_ignored(session, clock):
+    clock.dt = datetime.fromisoformat("2026-10-19T00:00Z")  # before kickoff: picks are open
+    await sync_league(session, FakeClient(pl(6, ev("1"))), "nfl", clock)
+    await sync_league(session, FakeClient(pl(6, ev("1", date="1993-01-31T23:30Z"))), "nfl", clock)
+    assert (await session.scalar(select(Game))).kickoff_at == datetime.fromisoformat("2026-10-20T00:15Z")
+
+
+async def test_stored_kickoff_before_the_season_is_replaced(session, clock):
+    clock.dt = datetime.fromisoformat("2026-10-19T00:00Z")
+    await sync_league(session, FakeClient(pl(6, ev("1", date="1993-01-31T23:30Z"))), "nfl", clock)
+    await sync_league(session, FakeClient(pl(6, ev("1"))), "nfl", clock)
+    assert (await session.scalar(select(Game))).kickoff_at == datetime.fromisoformat("2026-10-20T00:15Z")
+
+
 async def test_future_kickoff_moves_freely(session, clock):
     await sync_league(session, FakeClient(pl(6, ev("1", date="2099-01-01T00:00Z"))), "nfl", clock)
     await sync_league(session, FakeClient(pl(6, ev("1", date="2099-02-01T00:00Z"))), "nfl", clock)

@@ -1,4 +1,4 @@
-from sqlalchemy import and_, case, select, update
+from sqlalchemy import and_, case, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,9 +29,14 @@ async def _upsert(session: AsyncSession, league: str, games: list[GameData], now
     cols = {c: stmt.excluded[c] for c in [*rows[0], "updated_at"] if c not in ("league", "external_id")}
     # One-way lock: once stored kickoff has passed it may move earlier, never later
     # (picks are already revealed). Earlier-or-equal moves and future kickoffs update freely.
-    old = Game.__table__.c.kickoff_at
+    # A kickoff dated before the season's own year is feed junk (the feed once sent 1993 for every
+    # game): never taken from the feed, and replaced by the next real date if one got stored.
+    old, new = Game.__table__.c.kickoff_at, stmt.excluded.kickoff_at
+    season_start = func.make_timestamptz(Game.__table__.c.season, 1, 1, 0, 0, 0, "UTC")
     cols["kickoff_at"] = case(
-        (and_(old <= now, stmt.excluded.kickoff_at > old), old), else_=stmt.excluded.kickoff_at
+        (new < season_start, old),
+        (and_(old <= now, new > old, old >= season_start), old),
+        else_=new,
     )
     await session.execute(
         stmt.on_conflict_do_update(index_elements=["league", "external_id"], set_=cols)
