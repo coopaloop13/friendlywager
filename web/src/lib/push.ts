@@ -12,13 +12,23 @@ export const UNREGISTER = 'mutation($token: String!) { unregisterDevice(token: $
 
 const quiet = { quiet: true, retries: [] };
 
+const register = (token: string) => gql(REGISTER, { token, platform: Capacitor.getPlatform() }, fetch, quiet);
+let listening = false;
+
 /** Ask for permission (the system only prompts once) and register the device. Safe to call on every launch. */
 export async function enablePush() {
 	if (!isNative()) return;
 	try {
 		if ((await FirebaseMessaging.requestPermissions()).receive !== 'granted') return;
-		const { token } = await FirebaseMessaging.getToken();
-		await gql(REGISTER, { token, platform: Capacitor.getPlatform() }, fetch, quiet);
+		// iOS, first launch: right after Allow, Apple's token is often not in yet and getToken throws.
+		// The token then arrives through this event (also when it is later replaced). Registering twice is harmless.
+		if (!listening) {
+			listening = true;
+			await FirebaseMessaging.addListener('tokenReceived', ({ token }) => {
+				register(token).catch((e) => console.warn('push not enabled', e));
+			});
+		}
+		await register((await FirebaseMessaging.getToken()).token);
 	} catch (e) {
 		console.warn('push not enabled', e); // reminders are a nicety; the app works without them
 	}

@@ -63,7 +63,8 @@ API: Cloudflare Worker `fw-api` (`deploy/api-worker`, serves `api.sportspicks.cc
 5. `npx wrangler deploy` in `deploy/api-worker` (needs Docker running; builds the image with the Dockerfile default `INSTALL_DEV=0`). Allow a few minutes for container provisioning.
 6. Web: `cd web && npm run build && npx wrangler deploy`. If host Node fails the engine check, build in Docker (`docker compose run --rm --no-deps web npm run build`) and run `npx wrangler deploy` from `web/` on the host; the container has no Cloudflare login.
 7. Dry runs: `npx wrangler deploy --dry-run` in either directory.
-8. Rotating a secret (`wrangler secret put`): the running container keeps its old env until the image changes; it only picks up the new value on a new image rollout or after it idles out (10m with no requests, but the 5-minute cron usually keeps it awake).
+8. iOS app: `npm run testflight` in `web/` builds the app and uploads it to TestFlight (Xcode must be signed in to the team in the project; the build number is the upload time). Testers get it from the TestFlight app after Apple processes it.
+9. Rotating a secret (`wrangler secret put`): the running container keeps its old env until the image changes; it only picks up the new value on a new image rollout or after it idles out (10m with no requests, but the 5-minute cron usually keeps it awake).
 
 ## Pointers
 

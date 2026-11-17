@@ -9,3 +9,6 @@ __pycache__
 
 # deploy
 deploy/api-worker/worker-configuration.d.ts
+
+# Firebase service account keys are secrets: never commit
+*adminsdk*.json

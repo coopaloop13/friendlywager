@@ -1,6 +1,12 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 
-const state = { native: true, permission: 'granted', calls: [] as string[] };
+const state = {
+	native: true,
+	permission: 'granted',
+	calls: [] as string[],
+	tokenFails: false,
+	onToken: (_: { token: string }) => {}
+};
 vi.mock('@capacitor/core', () => ({
 	Capacitor: { isNativePlatform: () => state.native, getPlatform: () => 'ios' }
 }));
@@ -10,7 +16,11 @@ vi.mock('@capacitor/preferences', () => ({
 vi.mock('@capacitor-firebase/messaging', () => ({
 	FirebaseMessaging: {
 		requestPermissions: async () => (state.calls.push('ask'), { receive: state.permission }),
-		getToken: async () => ({ token: 'device-1' }),
+		getToken: async () => {
+			if (state.tokenFails) throw new Error('No APNS token specified before fetching FCM Token');
+			return { token: 'device-1' };
+		},
+		addListener: async (_: string, f: (e: { token: string }) => void) => void (state.onToken = f),
 		deleteToken: async () => void state.calls.push('deleteToken')
 	}
 }));
@@ -27,6 +37,7 @@ beforeEach(() => {
 	state.native = true;
 	state.permission = 'granted';
 	state.calls = [];
+	state.tokenFails = false;
 });
 
 it('does nothing on the web', async () => {
@@ -42,6 +53,17 @@ it('registers this device once the user allows notifications', async () => {
 	const bodies = sent();
 	await enablePush();
 	expect(bodies()).toEqual([{ query: REGISTER, variables: { token: 'device-1', platform: 'ios' } }]);
+});
+
+it("registers when the token only turns up later (first launch, before Apple's token is in)", async () => {
+	state.tokenFails = true;
+	const bodies = sent();
+	await enablePush();
+	expect(bodies()).toEqual([]);
+	state.onToken({ token: 'device-late' });
+	await vi.waitFor(() =>
+		expect(bodies()).toEqual([{ query: REGISTER, variables: { token: 'device-late', platform: 'ios' } }])
+	);
 });
 
 it('registers nothing when the user says no', async () => {
