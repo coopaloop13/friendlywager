@@ -3,8 +3,12 @@
 ## Is it healthy?
 
 `GET https://api.pickem.cc/health` answers 200 `{"ok": true}` only when Postgres answers and every league's
-feed was fetched in the last 30 minutes. Otherwise it answers 503 with `{"ok": false, "stale": ["cfb"]}`.
-Point an uptime monitor at it.
+feed was fetched in the last 90 minutes. Otherwise it answers 503 with `{"ok": false, "stale": ["cfb"]}`.
+Point an uptime monitor at it, checking no more often than hourly: every check wakes the Neon compute.
+
+The cron runs every 5 minutes but only uses the database around games: from 70 minutes before a kickoff until
+every game is over, and otherwise once an hour. In between it answers `{"quiet_until": ...}` without a query,
+so the Neon compute can suspend (the free plan's 100 CU-hours a month do not cover always-on).
 
 The 5-minute cron fails loudly (Worker logs, `sync failed: 502 {"nfl": 12, "cfb": null}`) when a league's fetch or
 parse breaks. The other league is still saved. `null` marks the league that failed; the traceback is in the

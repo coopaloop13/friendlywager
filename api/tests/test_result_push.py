@@ -126,6 +126,7 @@ async def test_the_sync_cron_sends_results_and_survives_a_push_failure(client, s
     await pick(client, josh, g2, 24, 17)
     await final(session, g2, 24, 17)
     app.dependency_overrides[get_notifier] = lambda: Broken()
+    clock.dt = now + timedelta(hours=2)  # past the rest the cron takes when no game is near
     r = await client.post("/internal/sync", headers=secret)
     assert r.status_code == 200 and r.json() == {"nfl": 0, "cfb": 0}  # scores still sync
 

@@ -10,9 +10,9 @@ async def test_health_503_when_a_league_sync_is_stale(client, session, clock):
     from app.models import LeagueState
 
     session.add(LeagueState(league="nfl", season=2026, season_type=2, week=6,
-                            last_synced_at=clock.now() - timedelta(minutes=29)))
+                            last_synced_at=clock.now() - timedelta(minutes=89)))
     session.add(LeagueState(league="cfb", season=2026, season_type=2, week=8,
-                            last_synced_at=clock.now() - timedelta(minutes=31)))
+                            last_synced_at=clock.now() - timedelta(minutes=91)))
     await session.flush()
     r = await client.get("/health")
     assert r.status_code == 503 and r.json() == {"ok": False, "stale": ["cfb"]}

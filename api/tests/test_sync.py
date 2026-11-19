@@ -1,11 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 
+from app.db import get_session
 from app.main import create_app
 from app.models import Game, LeagueState
 from app.sync.espn import WeekKey, get_scoreboard_client
-from app.sync.service import sync_league
+from app.sync.service import IDLE, quiet_until, sync_league
 
 
 def ev(id, state="pre", name="STATUS_SCHEDULED", home_rank=99, away_rank=99, hs="0", as_="0",
@@ -176,3 +177,55 @@ def test_empty_sync_secret_rejected():
 
     with pytest.raises(ValidationError):
         Settings(database_url="x", session_secret="s" * 32, sync_secret="")
+
+
+T0 = datetime.fromisoformat("2026-10-20T00:00Z")
+
+
+async def kickoffs(session, clock, *events):
+    clock.dt = T0
+    await sync_league(session, FakeClient(pl(6, *events)), "nfl", clock)
+    return await quiet_until(session, T0)
+
+
+def at(**delta):
+    return (T0 + timedelta(**delta)).strftime("%Y-%m-%dT%H:%MZ")
+
+
+async def test_the_cron_stays_on_the_database_around_a_game(session, clock):
+    assert await kickoffs(session, clock, ev("1", "in", "STATUS_IN_PROGRESS", date=at(hours=-3))) == T0
+    assert await kickoffs(session, clock, ev("2", date=at(minutes=65))) == T0  # reminders go out an hour ahead
+    assert await kickoffs(session, clock, ev("3", date=at(hours=-1))) == T0  # kicked off, feed not caught up
+
+
+async def test_the_cron_rests_until_an_hour_before_the_next_kickoff(session, clock):
+    assert await quiet_until(session, T0) == T0 + IDLE  # no games at all
+    assert await kickoffs(session, clock, ev("1", date=at(days=2))) == T0 + IDLE  # still checks the feed hourly
+    assert await kickoffs(session, clock, ev("2", date=at(minutes=100))) == T0 + timedelta(minutes=30)
+
+
+async def test_a_game_the_feed_abandoned_does_not_keep_the_cron_busy(session, clock):
+    stuck = (ev("1", "in", "STATUS_IN_PROGRESS", date=at(days=-2)), ev("2", date=at(days=-2)))
+    assert await kickoffs(session, clock, *stuck) == T0 + IDLE
+
+
+async def test_internal_sync_skips_the_database_between_games(client, session, clock):
+    clock.dt = T0
+    fake = FakeClient(pl(6, ev("1", date=at(days=2))))
+    app = client._transport.app
+    app.dependency_overrides[get_scoreboard_client] = lambda: fake
+    secret = {"X-Sync-Secret": "test-sync-secret-0123456789"}
+    assert (await client.post("/internal/sync", headers=secret)).json() == {"nfl": 1, "cfb": 0}
+    calls = len(fake.calls)
+
+    real = app.dependency_overrides[get_session]
+    app.dependency_overrides[get_session] = lambda: None  # any query would be a 500
+    clock.dt = T0 + IDLE - timedelta(minutes=5)
+    r = await client.post("/internal/sync", headers=secret)
+    assert r.status_code == 200 and r.json() == {"quiet_until": (T0 + IDLE).isoformat()}
+    assert len(fake.calls) == calls  # nor the feed
+    assert (await client.post("/internal/sync", headers={"X-Sync-Secret": "wrong"})).status_code == 401
+
+    app.dependency_overrides[get_session] = real
+    clock.dt = T0 + IDLE
+    assert (await client.post("/internal/sync", headers=secret)).json() == {"nfl": 1, "cfb": 0}

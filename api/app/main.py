@@ -16,10 +16,10 @@ from app.models import LeagueState
 from app.notify import Notifier, get_notifier
 from app.reminders import send_reminders, send_results
 from app.sync.espn import ScoreboardClient, get_scoreboard_client
-from app.sync.service import sync_league
+from app.sync.service import IDLE, quiet_until, sync_league
 
 log = logging.getLogger(__name__)
-STALE_AFTER = timedelta(minutes=30)  # six missed 5-minute crons
+STALE_AFTER = IDLE + timedelta(minutes=30)  # the longest rest between syncs, then six missed 5-minute crons
 MAX_BODY = 16 * 1024  # the largest page query is under 1 KB
 # The store apps load from these origins and call the API directly with a bearer token (never the cookie).
 APP_ORIGINS = ["capacitor://localhost", "https://localhost"]
@@ -28,6 +28,7 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
     app = FastAPI()
     app.state.settings = settings or Settings()
     app.state.clock = clock or SystemClock()
+    app.state.quiet_until = None  # in memory only: a fresh container always syncs once
     # visible in the Worker logs after each container start: says whether reminders really go out
     log.warning("push reminders: %s", "Firebase" if app.state.settings.fcm_service_account else "log only")
 
@@ -63,6 +64,11 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
         expected = request.app.state.settings.sync_secret.encode()
         if not hmac.compare_digest(x_sync_secret.encode(), expected):
             raise HTTPException(401, "bad sync secret")
+        # Between games the cron must not touch Postgres: each query keeps the Neon compute awake (and billed).
+        now, quiet = request.app.state.clock.now(), request.app.state.quiet_until
+        if quiet and now < quiet:
+            return {"quiet_until": quiet.isoformat()}
+        request.app.state.quiet_until = None
         counts: dict[str, int | None] = {}
         for lg in ("nfl", "cfb"):  # one transaction per league: a feed failure in one must not discard the other
             try:
@@ -84,7 +90,14 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
         except Exception:
             await session.rollback()
             log.exception("result pushes failed")
-        return JSONResponse(counts, 502) if None in counts.values() else counts
+        if None in counts.values():  # a failed league is retried on the next cron
+            return JSONResponse(counts, 502)
+        try:
+            request.app.state.quiet_until = await quiet_until(session, now)
+        except Exception:
+            await session.rollback()
+            log.exception("could not plan the next sync")
+        return counts
 
     # no public GraphiQL in prod
     app.include_router(make_graphql_router(ide=not app.state.settings.cookie_secure), prefix="/graphql")

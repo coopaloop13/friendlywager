@@ -1,12 +1,18 @@
+from datetime import datetime, timedelta
+
 from sqlalchemy import and_, case, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import Clock
 from app.models import Game, LeagueState
+from app.reminders import WINDOW
 from app.sync.espn import GameData, ScoreboardClient, WeekKey, parse_scoreboard
 
 TOP_25 = 25
+IDLE = timedelta(hours=1)  # with no game near, the cron still reads the feed this often (new games, spreads)
+LEAD = WINDOW + timedelta(minutes=10)  # be back before the "picks lock soon" reminders are due
+OVERDUE = timedelta(hours=8)  # a game still unfinished this long after kickoff was dropped by the feed
 
 
 def _wanted(league: str, g: GameData, existing: set[str]) -> bool:
@@ -74,3 +80,17 @@ async def sync_league(session: AsyncSession, client: ScoreboardClient, league: s
         )
     )
     return n
+
+
+async def quiet_until(session: AsyncSession, now: datetime) -> datetime:
+    """When the cron next has work in the database: `now` around a game, else up to IDLE away.
+
+    The cron skips the database until then, so the Neon compute can suspend between games.
+    """
+    unfinished = Game.status.in_(("scheduled", "in_progress"))
+    if await session.scalar(
+        select(Game.id).where(unfinished, Game.kickoff_at > now - OVERDUE, Game.kickoff_at <= now + LEAD).limit(1)
+    ):
+        return now
+    upcoming = await session.scalar(select(func.min(Game.kickoff_at)).where(unfinished, Game.kickoff_at > now))
+    return min(now + IDLE, upcoming - LEAD) if upcoming else now + IDLE
