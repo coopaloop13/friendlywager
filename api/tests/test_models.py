@@ -90,3 +90,14 @@ async def test_friendships_indexed_by_each_side(session):
 
     names = set(await session.scalars(text("SELECT indexname FROM pg_indexes WHERE tablename = 'friendships'")))
     assert {"ix_friendships_requester_id", "ix_friendships_addressee_id"} <= names
+
+
+async def test_picks_indexed_by_game_and_games_by_status_and_kickoff(session):
+    # the picks key leads with user_id, so "every pick on this game" needs its own index;
+    # the cron looks games up by status and kickoff every five minutes
+    from sqlalchemy import text
+
+    names = set(await session.scalars(
+        text("SELECT indexname FROM pg_indexes WHERE tablename IN ('picks', 'games')")
+    ))
+    assert {"ix_picks_game_id", "ix_games_status_kickoff_at"} <= names

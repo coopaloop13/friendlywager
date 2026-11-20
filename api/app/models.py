@@ -97,6 +97,7 @@ class Game(Base):
         CheckConstraint("season_type IN (1,2,3)", name="ck_games_season_type"),
         Index("uq_games_league_external", "league", "external_id", unique=True),
         Index("ix_games_week", "league", "season", "season_type", "week"),
+        Index("ix_games_status_kickoff_at", "status", "kickoff_at"),  # the cron's lookups
     )
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), **UUID_PK)
     league: Mapped[str] = mapped_column(String)
@@ -134,7 +135,7 @@ class Pick(Base):
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     game_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("games.id", ondelete="CASCADE"), primary_key=True
+        ForeignKey("games.id", ondelete="CASCADE"), primary_key=True, index=True  # the key leads with user_id
     )
     pred_home: Mapped[int] = mapped_column(SmallInteger)
     pred_away: Mapped[int] = mapped_column(SmallInteger)
