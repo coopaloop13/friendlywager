@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import event, select, update
 
 from app.models import DeviceToken, Game
 from app.notify import get_notifier
@@ -97,6 +97,27 @@ async def test_tokens_the_push_service_rejects_are_dropped(client, session, cloc
     _, notifier = await run(session, clock, FakeNotifier(dead={"old-phone"}))
     assert notifier.sent[0][0] == ["old-phone", "tok-josh"]
     assert [d.token for d in (await session.scalars(select(DeviceToken))).all()] == ["tok-josh"]
+
+
+def count_deletes(session) -> list[str]:
+    """Collects every DELETE sent from here on; the cron must not send one per user."""
+    seen: list[str] = []
+    event.listen(
+        session.bind.sync_engine, "before_cursor_execute",
+        lambda *a: seen.append(a[2]) if a[2].startswith("DELETE") else None,
+    )
+    return seen
+
+
+async def test_rejected_tokens_are_dropped_in_one_statement_however_many_users(client, session, clock, now):
+    for handle in ("josh", "maria", "bob"):
+        await device(client, handle, f"old-{handle}")
+    await mkgame(session, now + timedelta(minutes=30))
+    deletes = count_deletes(session)
+    n, _ = await run(session, clock, FakeNotifier(dead={"old-josh", "old-maria", "old-bob"}))
+    assert n == 3
+    assert len(deletes) == 1, deletes
+    assert (await session.scalars(select(DeviceToken))).all() == []
 
 
 async def test_deleting_the_account_removes_its_devices(client, session):

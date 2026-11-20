@@ -40,6 +40,12 @@ async def set_result_pushes(session: AsyncSession, user_id: uuid.UUID, on: bool)
     return on
 
 
+async def _forget(session: AsyncSession, tokens: list[str]) -> None:
+    """Drop the devices the push service says are gone: one statement per run, not one per user."""
+    if tokens:
+        await session.execute(delete(DeviceToken).where(DeviceToken.token.in_(tokens)))
+
+
 async def send_reminders(session: AsyncSession, notifier: Notifier, clock: Clock) -> int:
     """Push "picks lock soon" to every user with a device and an unpicked game about to kick off."""
     now = clock.now()
@@ -56,7 +62,7 @@ async def send_reminders(session: AsyncSession, notifier: Notifier, clock: Clock
         .where(or_(User.reminded_at.is_(None), User.reminded_at < now - QUIET))
         .group_by(User.id)
     )
-    sent = 0
+    sent, gone = 0, []
     for user, tokens, n_picked in rows.all():
         owed = len(soon) - n_picked
         if owed <= 0:
@@ -68,9 +74,9 @@ async def send_reminders(session: AsyncSession, notifier: Notifier, clock: Clock
             log.exception("reminder failed for user %s", user.id)
             continue
         user.reminded_at = now
-        if dead:
-            await session.execute(delete(DeviceToken).where(DeviceToken.token.in_(dead)))
+        gone += dead
         sent += 1
+    await _forget(session, gone)
     return sent
 
 
@@ -113,7 +119,7 @@ async def send_results(session: AsyncSession, notifier: Notifier, clock: Clock) 
     everyone = {f for u in tokens for f in friends.get(u, ())}
     handles = dict((await session.execute(select(User.id, User.handle).where(User.id.in_(everyone)))).all())
 
-    sent = 0
+    sent, gone = 0, []
     for user, devices in tokens.items():
         mine = [g for g in finals if user in picks.get(g.id, {})]
         lines = []
@@ -135,7 +141,7 @@ async def send_results(session: AsyncSession, notifier: Notifier, clock: Clock) 
         except Exception:  # one bad push must not stop the rest
             log.exception("result push failed for user %s", user)
             continue
-        if dead:
-            await session.execute(delete(DeviceToken).where(DeviceToken.token.in_(dead)))
+        gone += dead
         sent += 1
+    await _forget(session, gone)
     return sent

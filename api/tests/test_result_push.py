@@ -1,14 +1,14 @@
 from datetime import timedelta
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 
-from app.models import Game
+from app.models import DeviceToken, Game
 from app.notify import get_notifier
 from app.reminders import send_results
 from test_auth import code, gql
 from test_friends import PENDING, RESPOND, SEND, make_user
 from test_picks import SAVE, mkgame, now  # noqa: F401  (now is a fixture)
-from test_reminders import REGISTER, FakeNotifier
+from test_reminders import REGISTER, FakeNotifier, count_deletes
 from test_sync import FakeClient, pl
 
 
@@ -100,6 +100,22 @@ async def test_a_long_friend_list_is_cut_short(client, session, clock, now):
     await final(session, g, 24, 17)
     _, sent = await run(session, clock)
     assert sent["tok-josh"][1] == "You 2, @abe 0 · You 2, @bea 0 · You 2, @cal 0 +1 more"
+
+
+async def test_rejected_tokens_are_dropped_in_one_statement_however_many_players(client, session, clock, now):
+    josh, maria, bob = [await player(client, h) for h in ("josh", "maria", "bob")]
+    await befriend(client, josh, "maria", maria)
+    await befriend(client, josh, "bob", bob)
+    g = await mkgame(session, now + timedelta(hours=1))
+    for h in (josh, maria, bob):
+        await pick(client, h, g, 24, 17)
+    await final(session, g, 24, 17)
+    deletes = count_deletes(session)
+    notifier = FakeNotifier(dead={"tok-josh", "tok-maria", "tok-bob"})
+    assert await send_results(session, notifier, clock) == 3
+    await session.commit()
+    assert len(deletes) == 1, deletes
+    assert (await session.scalars(select(DeviceToken))).all() == []
 
 
 async def test_the_sync_cron_sends_results_and_survives_a_push_failure(client, session, clock, now):
