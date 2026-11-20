@@ -45,7 +45,10 @@
 		e.preventDefault();
 		error = info = '';
 		try {
-			await gql(CHANGE_HANDLE, { handle: handle.trim().replace(/^@/, '') });
+			const d = await gql<{ changeHandle: { id: string; handle: string } }>(CHANGE_HANDLE, {
+				handle: handle.trim().replace(/^@/, '')
+			});
+			remember('me', d.changeHandle); // the layout opens on the kept user
 			handle = '';
 			info = 'Handle changed.';
 			await invalidateAll();
