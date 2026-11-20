@@ -61,3 +61,30 @@ it('gives up after the last retry and does not retry client errors', async () =>
 	await expect(gql('{me{id}}', undefined, bad, { retries: [0, 0] })).rejects.toThrow('Request failed (400)');
 	expect(bad).toHaveBeenCalledTimes(1);
 });
+
+it('fresh() shows the last copy at once, then the new answer, and keeps it for next time', async () => {
+	const { cached, fresh, remember } = await import('./gql');
+	const store = new Map<string, string>();
+	vi.stubGlobal('localStorage', {
+		getItem: (k: string) => store.get(k) ?? null,
+		setItem: (k: string, v: string) => void store.set(k, v)
+	});
+	const shown: unknown[] = [];
+	const load = vi.fn((quiet: boolean) => Promise.resolve(quiet ? 'second' : 'first'));
+	// nothing kept yet: one loud request, shown once
+	await fresh('k', load, (v) => shown.push(v));
+	expect(load).toHaveBeenLastCalledWith(false);
+	expect(shown).toEqual(['first']);
+	// a copy exists: it shows before the request answers, and the refresh is quiet
+	await fresh('k', load, (v) => shown.push(v));
+	expect(load).toHaveBeenLastCalledWith(true);
+	expect(shown).toEqual(['first', 'first', 'second']);
+	expect(cached('k')).toBe('second');
+	// a failed refresh rejects but leaves the copy on screen and in storage
+	remember('k', 'kept');
+	const seen: unknown[] = [];
+	await expect(fresh('k', () => Promise.reject(new Error('offline')), (v) => seen.push(v))).rejects.toThrow('offline');
+	expect(seen).toEqual(['kept']);
+	expect(cached('k')).toBe('kept');
+	vi.unstubAllGlobals();
+});

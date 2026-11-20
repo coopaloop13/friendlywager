@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { gql } from '#lib/gql.js';
+	import { fresh, gql, remember } from '#lib/gql.js';
 	import { getLook, LOOKS, setLook, type Look } from '#lib/look.js';
 	import { CHANGE_HANDLE, DELETE_ACCOUNT, forget, RESULT_PUSHES, SET_RESULT_PUSHES } from '#lib/account.js';
 	import { signedOut } from '#lib/native.js';
@@ -18,10 +18,15 @@
 	let look = $state(getLook());
 	let results = $state<boolean | null>(null); // unknown until the server answers
 
+	const pushesKey = $derived(`pushes:${data.user?.id}`);
+
 	$effect(() => {
-		gql<{ resultPushes: boolean }>(RESULT_PUSHES, undefined, fetch, { quiet: true })
-			.then((d) => (results = d.resultPushes))
-			.catch((e) => (error = e.message));
+		// only this switch changes it: show the last known setting at once, then confirm it
+		fresh(
+			pushesKey,
+			() => gql<{ resultPushes: boolean }>(RESULT_PUSHES, undefined, fetch, { quiet: true }).then((d) => d.resultPushes),
+			(on) => (results = on)
+		).catch((e) => (error = e.message));
 	});
 
 	async function setResults(on: boolean) {
@@ -29,6 +34,7 @@
 		try {
 			await gql(SET_RESULT_PUSHES, { on }, fetch, { quiet: true });
 			results = on;
+			remember(pushesKey, on);
 		} catch (err) {
 			results = !on; // put the box back
 			error = (err as Error).message;

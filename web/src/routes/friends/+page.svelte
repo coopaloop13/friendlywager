@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { gql } from '#lib/gql.js';
+	import { fresh, gql } from '#lib/gql.js';
 	import Invite from '#lib/Invite.svelte';
 	import { reportHref } from '#lib/site.js';
 	import type { PageProps } from './$types';
@@ -14,14 +14,23 @@
 	let error = $state('');
 	let info = $state('');
 
-	async function load() {
-		const d = await gql<{ friends: U[]; pendingRequests: typeof requests; sentRequests: typeof sent }>(
-			'{ friends { id handle } pendingRequests { id from { id handle } } sentRequests { id to { id handle } } }'
+	// the lists only change when someone acts on them: show the last copy at once, refresh quietly
+	const load = () =>
+		fresh<{ friends: U[]; pendingRequests: typeof requests; sentRequests: typeof sent }>(
+			`friends:${data.user?.id}`,
+			(quiet) =>
+				gql(
+					'{ friends { id handle } pendingRequests { id from { id handle } } sentRequests { id to { id handle } } }',
+					undefined,
+					fetch,
+					{ quiet }
+				),
+			(d) => {
+				friends = d.friends;
+				requests = d.pendingRequests;
+				sent = d.sentRequests;
+			}
 		);
-		friends = d.friends;
-		requests = d.pendingRequests;
-		sent = d.sentRequests;
-	}
 
 	// run an action, then reload; surface errors inline
 	async function act(fn: () => Promise<unknown>, ok = '') {

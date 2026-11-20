@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { gql } from '#lib/gql.js';
+	import { fresh, gql, remember } from '#lib/gql.js';
 	import {
 		GAME_FIELDS,
 		fmtKickoff,
@@ -39,6 +39,36 @@
 			myPoints theirPoints games { mine { home away } theirs { home away } myPoints theirPoints game { ${GAME_FIELDS} } } } }`;
 
 	let token = 0; // only the latest request may apply its result
+	// false while a kept copy is on screen unconfirmed: it may predate a kickoff, so a missing pick isn't "no pick" yet
+	let confirmed = $state(false);
+
+	const week = async (l: typeof league, w: WeekView, f: string, quiet: boolean) => {
+		const [d, hh] = await Promise.all([
+			gql<{ matchup: M }>(MATCHUP, { f, l, s: w.season, t: w.seasonType, w: w.week }, fetch, { quiet }),
+			gql<{ headToHead: H }>(
+				'query($f: ID!, $l: League!, $s: Int!) { headToHead(friendId: $f, league: $l, season: $s) { pointsFor pointsAgainst weeksWon weeksLost weeksTied } }',
+				{ f, l, s: w.season },
+				fetch,
+				{ quiet }
+			)
+		]);
+		return { m: d.matchup, h: hh.headToHead };
+	};
+
+	// what the page opens on: the current week against this friend
+	type Landing = { wk: WeekView | null; friend: string; m: M | null; h: H | null };
+
+	async function landing(l: typeof league, f: string, quiet: boolean): Promise<Landing> {
+		const d = await gql<{ currentWeek: WeekView | null; friends: { id: string; handle: string }[] }>(
+			'query($l: League!) { currentWeek(league: $l) { league season seasonType week } friends { id handle } }',
+			{ l },
+			fetch,
+			{ quiet }
+		);
+		const friend = d.friends.find((u) => u.id === f)?.handle ?? '';
+		if (!d.currentWeek) return { wk: null, friend, m: null, h: null };
+		return { wk: d.currentWeek, friend, ...(await week(l, d.currentWeek, f, quiet)) };
+	}
 
 	async function loadWeek(l: typeof league, w: WeekView, f: string) {
 		const mine = ++token;
@@ -47,16 +77,11 @@
 		loading = true;
 		error = '';
 		try {
-			const [d, hh] = await Promise.all([
-				gql<{ matchup: M }>(MATCHUP, { f, l, s: w.season, t: w.seasonType, w: w.week }),
-				gql<{ headToHead: H }>(
-					'query($f: ID!, $l: League!, $s: Int!) { headToHead(friendId: $f, league: $l, season: $s) { pointsFor pointsAgainst weeksWon weeksLost weeksTied } }',
-					{ f, l, s: w.season }
-				)
-			]);
+			const d = await week(l, w, f, false);
 			if (mine !== token) return;
-			m = d.matchup;
-			h = hh.headToHead;
+			m = d.m;
+			h = d.h;
+			confirmed = true;
 		} catch (e) {
 			if (mine === token) error = (e as Error).message;
 		} finally {
@@ -68,23 +93,30 @@
 		const l = league;
 		const f = friendId;
 		const mine = ++token;
+		const key = `matchup:${page.data.user?.id}:${f}:${l}`;
+		const show = (v: Landing) => {
+			if (mine !== token) return;
+			({ wk, friend, m, h } = v);
+			loading = false;
+		};
 		wk = m = h = null;
 		error = '';
 		loading = true;
-		gql<{ currentWeek: WeekView | null; friends: { id: string; handle: string }[] }>(
-			'query($l: League!) { currentWeek(league: $l) { league season seasonType week } friends { id handle } }',
-			{ l }
-		)
-			.then((d) => {
-				if (mine !== token) return;
-				friend = d.friends.find((u) => u.id === f)?.handle ?? '';
-				if (d.currentWeek) return loadWeek(l, d.currentWeek, f);
-				loading = false;
-			})
+		confirmed = false;
+		// scores only move while games are on: show the last copy at once, refresh quietly.
+		// Only this opening view is kept; other weeks are fetched as you step to them.
+		fresh(key, (quiet) => landing(l, f, quiet), show)
+			.then(() => mine === token && (confirmed = true))
 			.catch((e) => {
-				if (mine !== token) return;
-				error = e.message;
-				loading = false;
+				if (e.code === 'FORBIDDEN') {
+					// no longer friends: their picks leave the screen and the device
+					show({ wk: null, friend: '', m: null, h: null });
+					remember(key, null);
+				}
+				if (mine === token) error = e.message;
+			})
+			.finally(() => {
+				if (mine === token) loading = false;
 			});
 	});
 
@@ -132,6 +164,7 @@
 					Them:
 					{#if !isLocked(g.game.kickoffAt, now)}<em>hidden until kickoff</em>
 					{:else if g.theirs}{@render line(g.game, g.theirs.away, g.theirs.home)}
+					{:else if !confirmed}<em>checking…</em>
 					{:else}no pick{/if}
 				</p>
 				{#if g.myPoints || g.theirPoints}<p class="meta">Points: You {g.myPoints} – {g.theirPoints} Them</p>{/if}

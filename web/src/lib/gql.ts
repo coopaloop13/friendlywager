@@ -70,3 +70,16 @@ export function remember(key: string, value: unknown) {
 		// private mode or full: the next load is just slower
 	}
 }
+
+/**
+ * For data that rarely changes: `show` gets the last copy at once (if there is one), then the new answer,
+ * which is kept for next time. `load` is told to be quiet when a copy is already on screen.
+ * A failed refresh rejects and leaves the copy where it is.
+ */
+export async function fresh<T>(key: string, load: (quiet: boolean) => Promise<T>, show: (value: T) => void) {
+	const hit = cached<T>(key);
+	if (hit !== null) show(hit);
+	const value = await load(hit !== null);
+	show(value);
+	remember(key, value);
+}
